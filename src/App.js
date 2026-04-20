@@ -172,6 +172,24 @@ export default function App() {
     if (clienteDetalle) await cargarActividades(clienteDetalle.id)
   }
 
+  function exportarCSV() {
+    const columnas = ['Nombre', 'Teléfono', 'Correo', 'Estatus', 'Asesor', 'Fuente', 'Tipo de interés', 'Probabilidad', 'Tiene INFONAVIT', 'Tiene terreno', 'Ubicación terreno', 'Próxima acción', 'Fecha próximo contacto', 'Notas']
+    const filas = clientesFiltrados.map(c => [
+      c.nombre, c.telefono, c.correo, c.estatus, c.asesor, c.fuente,
+      c.tipo_interes, c.probabilidad_cierre,
+      c.tiene_infonavit ? 'Sí' : 'No', c.tiene_terreno ? 'Sí' : 'No',
+      c.ubicacion_terreno, c.proxima_accion, c.fecha_proximo_contacto, c.notas
+    ].map(v => `"${(v || '').toString().replace(/"/g, '""')}"`))
+    const csv = '\uFEFF' + [columnas.join(','), ...filas.map(f => f.join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `clientes-mc-arquitectos-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   async function cambiarPassword(e) {
     e.preventDefault()
     setPasswordError('')
@@ -441,10 +459,16 @@ export default function App() {
           <div>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold text-gray-800">Clientes</h2>
-              <button onClick={() => { setForm({ ...clienteVacio, asesor: usuario?.rol === 'asesor' ? usuario.nombre : '' }); setClienteEditando(null); setMostrarFormulario(true) }}
-                className="flex items-center gap-1.5 bg-brand-gold text-white px-3 py-2 rounded-lg hover:bg-yellow-700 text-sm font-medium">
-                <Plus size={15} /> Nuevo
-              </button>
+              <div className="flex gap-2">
+                <button onClick={exportarCSV}
+                  className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium">
+                  ⬇ Exportar
+                </button>
+                <button onClick={() => { setForm({ ...clienteVacio, asesor: usuario?.rol === 'asesor' ? usuario.nombre : '' }); setClienteEditando(null); setMostrarFormulario(true) }}
+                  className="flex items-center gap-1.5 bg-brand-gold text-white px-3 py-2 rounded-lg hover:bg-yellow-700 text-sm font-medium">
+                  <Plus size={15} /> Nuevo
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
