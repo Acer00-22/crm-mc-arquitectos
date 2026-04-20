@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from './config/supabase'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { Plus, X, Edit2, Save, Search, Bell, ArrowLeft, Clock, Eye, EyeOff, Upload } from 'lucide-react'
 import * as XLSX from 'xlsx'
-
-const COLORES = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
 const ESTATUS_COLORES = {
   'nuevo': 'bg-blue-100 text-blue-800',
@@ -469,25 +466,6 @@ export default function App() {
     return coincideTexto && coincideEstatus && coincideFuente && coincideProbabilidad
   })
 
-  const porEstatus = ['nuevo', 'en seguimiento', 'cerrado', 'perdido'].map(e => ({
-    name: e, value: clientesVisibles.filter(c => c.estatus === e).length
-  })).filter(e => e.value > 0)
-
-  const porFuente = [...new Set(clientesVisibles.map(c => c.fuente).filter(Boolean))].map(f => ({
-    name: f, value: clientesVisibles.filter(c => c.fuente === f).length
-  }))
-
-  const porMes = () => {
-    const meses = {}
-    clientesVisibles.forEach(c => {
-      if (c.fecha_llegada) {
-        const mes = c.fecha_llegada.slice(0, 7)
-        meses[mes] = (meses[mes] || 0) + 1
-      }
-    })
-    return Object.entries(meses).map(([mes, total]) => ({ mes, total })).slice(-6)
-  }
-
   if (!usuario) {
     return (
       <div className="min-h-screen bg-brand-dark flex items-center justify-center px-4">
@@ -660,47 +638,251 @@ export default function App() {
               ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <h3 className="font-semibold text-gray-700 mb-3 text-sm">Leads por mes</h3>
-                {porMes().length === 0 ? <p className="text-center text-gray-300 text-sm py-10">Sin datos todavía</p> :
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={porMes()}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="mes" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} />
-                    <Tooltip />
-                    <Bar dataKey="total" fill="#B8892A" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>}
-              </div>
+            {/* CARDS ESTILO SALESFORCE */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
 
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <h3 className="font-semibold text-gray-700 mb-3 text-sm">Leads por estatus</h3>
-                {porEstatus.length === 0 ? <p className="text-center text-gray-300 text-sm py-10">Sin datos todavía</p> :
-                <ResponsiveContainer width="100%" height={200}>
-                  <PieChart>
-                    <Pie data={porEstatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, value }) => `${name}: ${value}`}>
-                      {porEstatus.map((_, i) => <Cell key={i} fill={COLORES[i % COLORES.length]} />)}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>}
-              </div>
+              {/* CERRAR TRATOS */}
+              {(() => {
+                const altaProb = clientesVisibles.filter(c => c.probabilidad_cierre === 'alta').length
+                const cerrados = clientesVisibles.filter(c => c.estatus === 'cerrado').length
+                const perdidos = clientesVisibles.filter(c => c.estatus === 'perdido').length
+                const total = clientesVisibles.length
+                const r = 40, circ = 2 * Math.PI * r
+                const pct = total > 0 ? cerrados / total : 0
+                return (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col">
+                    <div className="px-5 pt-5 pb-2">
+                      <h3 className="font-bold text-gray-800 text-sm">Cerrar Tratos</h3>
+                      <p className="text-xs text-gray-400 mt-0.5">Oportunidades activas</p>
+                    </div>
+                    <div className="flex items-center gap-6 px-5 py-4 flex-1">
+                      <div className="relative flex-shrink-0">
+                        <svg width="100" height="100" viewBox="0 0 100 100">
+                          <circle cx="50" cy="50" r={r} fill="none" stroke="#f3f4f6" strokeWidth="10" />
+                          <circle cx="50" cy="50" r={r} fill="none" stroke="#10b981" strokeWidth="10"
+                            strokeDasharray={`${pct * circ} ${circ}`} strokeLinecap="round"
+                            transform="rotate(-90 50 50)" />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-xl font-bold text-gray-800">{total}</span>
+                          <span className="text-xs text-gray-400">Total</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2 text-sm flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-blue-400 flex-shrink-0"></span>
+                          <span className="text-gray-600">{altaProb} Alta probabilidad</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0"></span>
+                          <span className="text-gray-600">{cerrados} Cerrados</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-red-400 flex-shrink-0"></span>
+                          <span className="text-gray-600">{perdidos} Perdidos</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="border-t border-gray-100 px-5 py-3">
+                      <button onClick={() => setVista('pipeline')} className="text-sm text-brand-gold font-medium hover:underline">Ver Pipeline →</button>
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* SEMÁFORO DE SEGUIMIENTO */}
+              {(() => {
+                const activos = clientesVisibles.filter(c => c.estatus === 'en seguimiento')
+                const verdes = activos.filter(c => getSemaforo(c.updated_at).emoji === '🟢').length
+                const amarillos = activos.filter(c => getSemaforo(c.updated_at).emoji === '🟡').length
+                const rojos = activos.filter(c => getSemaforo(c.updated_at).emoji === '🔴').length
+                const total = activos.length
+                const r = 40, circ = 2 * Math.PI * r
+                const pct = total > 0 ? verdes / total : 0
+                return (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col">
+                    <div className="px-5 pt-5 pb-2">
+                      <h3 className="font-bold text-gray-800 text-sm">Seguimiento Activo</h3>
+                      <p className="text-xs text-gray-400 mt-0.5">Clientes en seguimiento</p>
+                    </div>
+                    <div className="flex items-center gap-6 px-5 py-4 flex-1">
+                      <div className="relative flex-shrink-0">
+                        <svg width="100" height="100" viewBox="0 0 100 100">
+                          <circle cx="50" cy="50" r={r} fill="none" stroke="#f3f4f6" strokeWidth="10" />
+                          <circle cx="50" cy="50" r={r} fill="none" stroke="#f59e0b" strokeWidth="10"
+                            strokeDasharray={`${pct * circ} ${circ}`} strokeLinecap="round"
+                            transform="rotate(-90 50 50)" />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-xl font-bold text-gray-800">{total}</span>
+                          <span className="text-xs text-gray-400">Activos</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2 text-sm flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0"></span>
+                          <span className="text-gray-600">{verdes} Al día</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 flex-shrink-0"></span>
+                          <span className="text-gray-600">{amarillos} Por escribir</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0"></span>
+                          <span className="text-gray-600">{rojos} Urgentes</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="border-t border-gray-100 px-5 py-3">
+                      <button onClick={() => setVista('clientes')} className="text-sm text-brand-gold font-medium hover:underline">Ver Clientes →</button>
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* NUEVOS ESTE MES */}
+              {(() => {
+                const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30)
+                const nuevosEsteMes = clientesVisibles.filter(c => c.created_at && new Date(c.created_at) >= hace30)
+                const fbs = nuevosEsteMes.filter(c => c.fuente === 'Facebook').length
+                const wsp = nuevosEsteMes.filter(c => c.fuente === 'WhatsApp').length
+                const rec = nuevosEsteMes.filter(c => c.fuente === 'Recomendación').length
+                const total = nuevosEsteMes.length
+                const r = 40, circ = 2 * Math.PI * r
+                const pct = clientesVisibles.length > 0 ? total / clientesVisibles.length : 0
+                return (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col">
+                    <div className="px-5 pt-5 pb-2">
+                      <h3 className="font-bold text-gray-800 text-sm">Nuevos Leads</h3>
+                      <p className="text-xs text-gray-400 mt-0.5">Creados en los últimos 30 días</p>
+                    </div>
+                    <div className="flex items-center gap-6 px-5 py-4 flex-1">
+                      <div className="relative flex-shrink-0">
+                        <svg width="100" height="100" viewBox="0 0 100 100">
+                          <circle cx="50" cy="50" r={r} fill="none" stroke="#f3f4f6" strokeWidth="10" />
+                          <circle cx="50" cy="50" r={r} fill="none" stroke="#6366f1" strokeWidth="10"
+                            strokeDasharray={`${pct * circ} ${circ}`} strokeLinecap="round"
+                            transform="rotate(-90 50 50)" />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-xl font-bold text-gray-800">{total}</span>
+                          <span className="text-xs text-gray-400">Nuevos</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2 text-sm flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0"></span>
+                          <span className="text-gray-600">{fbs} Facebook</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0"></span>
+                          <span className="text-gray-600">{wsp} WhatsApp</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-purple-400 flex-shrink-0"></span>
+                          <span className="text-gray-600">{rec} Recomendación</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="border-t border-gray-100 px-5 py-3">
+                      <button onClick={() => setVista('clientes')} className="text-sm text-brand-gold font-medium hover:underline">Ver Clientes →</button>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <h3 className="font-semibold text-gray-700 mb-3 text-sm">Leads por fuente</h3>
-              {porFuente.length === 0 ? <p className="text-center text-gray-300 text-sm py-10">Sin datos todavía</p> :
-              <ResponsiveContainer width="100%" height={180}>
-                <BarChart data={porFuente} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" tick={{ fontSize: 10 }} />
-                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10 }} />
-                  <Tooltip />
-                  <Bar dataKey="value" fill="#454852" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>}
+            {/* FILA 2: Pipeline este mes + Eventos de hoy */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              {/* PIPELINE ESTE MES */}
+              {(() => {
+                const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30)
+                const nuevos = clientesVisibles.filter(c => c.created_at && new Date(c.created_at) >= hace30)
+                const r = 40, circ = 2 * Math.PI * r
+                const upstream = nuevos.filter(c => getSemaforo(c.updated_at).emoji === '🟢').length
+                const past = nuevos.filter(c => getSemaforo(c.updated_at).emoji === '🟡' || getSemaforo(c.updated_at).emoji === '🔴').length
+                const noAct = nuevos.filter(c => getSemaforo(c.updated_at).emoji === '⚪').length
+                const pct = nuevos.length > 0 ? upstream / nuevos.length : 0
+                return (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col">
+                    <div className="px-5 pt-5 pb-2">
+                      <h3 className="font-bold text-gray-800 text-sm">Pipeline Este Mes</h3>
+                      <p className="text-xs text-gray-400 mt-0.5">Leads creados en los últimos 30 días</p>
+                    </div>
+                    <div className="flex items-center gap-6 px-5 py-4 flex-1">
+                      <div className="relative flex-shrink-0">
+                        <svg width="100" height="100" viewBox="0 0 100 100">
+                          <circle cx="50" cy="50" r={r} fill="none" stroke="#f3f4f6" strokeWidth="10" />
+                          <circle cx="50" cy="50" r={r} fill="none" stroke="#B8892A" strokeWidth="10"
+                            strokeDasharray={`${pct * circ} ${circ}`} strokeLinecap="round"
+                            transform="rotate(-90 50 50)" />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-xl font-bold text-gray-800">{nuevos.length}</span>
+                          <span className="text-xs text-gray-400">Leads</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2 text-sm flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0"></span>
+                          <span className="text-gray-600">{upstream} Con actividad reciente</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 flex-shrink-0"></span>
+                          <span className="text-gray-600">{past} Actividad pasada</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-gray-300 flex-shrink-0"></span>
+                          <span className="text-gray-600">{noAct} Sin actividad</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="border-t border-gray-100 px-5 py-3">
+                      <button onClick={() => setVista('pipeline')} className="text-sm text-brand-gold font-medium hover:underline">Ver Pipeline →</button>
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* EVENTOS DE HOY */}
+              {(() => {
+                const hoy = new Date().toISOString().slice(0, 10)
+                const eventosHoy = citas.filter(c => c.fecha === hoy)
+                return (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col">
+                    <div className="px-5 pt-5 pb-2">
+                      <h3 className="font-bold text-gray-800 text-sm">Eventos de Hoy</h3>
+                      <p className="text-xs text-gray-400 mt-0.5">{new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                    </div>
+                    <div className="px-5 py-4 flex-1">
+                      {eventosHoy.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full text-center py-6 text-gray-400">
+                          <span className="text-3xl mb-2">📅</span>
+                          <p className="text-sm">Sin eventos programados hoy</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {eventosHoy.map(e => (
+                            <div key={e.id} className="flex items-start gap-3 bg-yellow-50 rounded-xl px-3 py-2.5">
+                              <div className="w-8 h-8 rounded-lg bg-brand-gold text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                                {e.hora ? e.hora.slice(0, 5) : '—'}
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-gray-800">{e.titulo}</p>
+                                {e.asesor && <p className="text-xs text-gray-400">{e.asesor}</p>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="border-t border-gray-100 px-5 py-3">
+                      <button onClick={() => setVista('agenda')} className="text-sm text-brand-gold font-medium hover:underline">Ver Agenda →</button>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           </div>
         )}
