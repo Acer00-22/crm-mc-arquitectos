@@ -83,15 +83,14 @@ export default function App() {
     e.preventDefault()
     setLoginCargando(true)
     setLoginError('')
-    const { data } = await supabase
-      .from('usuarios')
-      .select('*')
-      .ilike('nombre', loginForm.nombre.trim())
-      .eq('password', loginForm.password)
-      .single()
-    if (data) {
-      localStorage.setItem('mc_usuario', JSON.stringify(data))
-      setUsuario(data)
+    const { data } = await supabase.from('usuarios').select('*')
+    const encontrado = (data || []).find(u =>
+      u.nombre.toLowerCase() === loginForm.nombre.trim().toLowerCase() &&
+      u.password === loginForm.password
+    )
+    if (encontrado) {
+      localStorage.setItem('mc_usuario', JSON.stringify(encontrado))
+      setUsuario(encontrado)
     } else {
       setLoginError('Usuario o contraseña incorrectos')
     }
