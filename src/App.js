@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './config/supabase'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
-import { Plus, X, Edit2, Save, Search, Bell, ArrowLeft, Clock } from 'lucide-react'
+import { Plus, X, Edit2, Save, Search, Bell, ArrowLeft, Clock, Eye, EyeOff } from 'lucide-react'
 
 const COLORES = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
@@ -47,6 +47,7 @@ export default function App() {
   const [loginForm, setLoginForm] = useState({ nombre: '', password: '' })
   const [loginError, setLoginError] = useState('')
   const [loginCargando, setLoginCargando] = useState(false)
+  const [mostrarPassword, setMostrarPassword] = useState(false)
 
   const [vista, setVista] = useState('dashboard')
   const [clientes, setClientes] = useState([])
@@ -350,14 +351,20 @@ export default function App() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Contraseña</label>
-              <input
-                type="password"
-                value={loginForm.password}
-                onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
-                placeholder="••••••••"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={mostrarPassword ? 'text' : 'password'}
+                  value={loginForm.password}
+                  onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
+                  placeholder="••••••••"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                  required
+                />
+                <button type="button" onClick={() => setMostrarPassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  {mostrarPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
             {loginError && <p className="text-xs text-red-500 text-center">{loginError}</p>}
             <button
