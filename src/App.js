@@ -88,24 +88,22 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-indigo-700 text-white px-4 py-3 shadow sticky top-0 z-40">
+      <div className="bg-brand-dark text-white px-4 py-3 shadow sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="bg-white bg-opacity-20 p-1.5 rounded-lg">
-              <Users size={18} />
-            </div>
+            <img src="/logo.jpeg" alt="MC Arquitectos" className="w-9 h-9 rounded-full object-cover border-2 border-brand-gold" />
             <div>
-              <h1 className="text-sm font-bold leading-tight">MC Arquitectos CRM</h1>
-              <p className="text-indigo-200 text-xs">{clientes.length} clientes</p>
+              <h1 className="text-sm font-bold leading-tight text-brand-gold">MC Arquitectos</h1>
+              <p className="text-gray-300 text-xs">{clientes.length} clientes</p>
             </div>
           </div>
           <div className="flex gap-1">
             <button onClick={() => setVista('dashboard')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium ${vista === 'dashboard' ? 'bg-white text-indigo-700' : 'text-white hover:bg-indigo-600'}`}>
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium ${vista === 'dashboard' ? 'bg-brand-gold text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
               Dashboard
             </button>
             <button onClick={() => setVista('clientes')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium ${vista === 'clientes' ? 'bg-white text-indigo-700' : 'text-white hover:bg-indigo-600'}`}>
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium ${vista === 'clientes' ? 'bg-brand-gold text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
               Clientes
             </button>
           </div>
@@ -179,7 +177,7 @@ export default function App() {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold text-gray-800">Clientes</h2>
               <button onClick={() => { setForm(clienteVacio); setClienteEditando(null); setMostrarFormulario(true) }}
-                className="flex items-center gap-1.5 bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium">
+                className="flex items-center gap-1.5 bg-brand-gold text-white px-3 py-2 rounded-lg hover:bg-yellow-700 text-sm font-medium">
                 <Plus size={15} /> Nuevo
               </button>
             </div>
@@ -200,7 +198,7 @@ export default function App() {
                           <p className="text-sm text-gray-500">{c.telefono}</p>
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={() => editarCliente(c)} className="text-indigo-500"><Edit2 size={15} /></button>
+                          <button onClick={() => editarCliente(c)} className="text-brand-gold"><Edit2 size={15} /></button>
                           <button onClick={() => eliminarCliente(c.id)} className="text-red-400"><X size={15} /></button>
                         </div>
                       </div>
@@ -246,7 +244,7 @@ export default function App() {
                           <td className="px-4 py-3 text-gray-500">{c.asesor}</td>
                           <td className="px-4 py-3">
                             <div className="flex gap-2">
-                              <button onClick={() => editarCliente(c)} className="text-indigo-500 hover:text-indigo-700"><Edit2 size={15} /></button>
+                              <button onClick={() => editarCliente(c)} className="text-brand-gold hover:text-yellow-700"><Edit2 size={15} /></button>
                               <button onClick={() => eliminarCliente(c.id)} className="text-red-400 hover:text-red-600"><X size={15} /></button>
                             </div>
                           </td>
@@ -282,7 +280,7 @@ export default function App() {
                 <div key={key}>
                   <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
                   <input type={type} value={form[key] || ''} onChange={e => setForm({ ...form, [key]: e.target.value })}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300" />
                 </div>
               ))}
 
@@ -295,7 +293,7 @@ export default function App() {
                 <div key={key}>
                   <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
                   <select value={form[key] || ''} onChange={e => setForm({ ...form, [key]: e.target.value })}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300">
                     <option value="">Seleccionar...</option>
                     {options.map(o => <option key={o} value={o}>{o}</option>)}
                   </select>
@@ -318,14 +316,14 @@ export default function App() {
               <div className="col-span-1 md:col-span-2">
                 <label className="block text-xs font-medium text-gray-600 mb-1">Notas</label>
                 <textarea value={form.notas || ''} onChange={e => setForm({ ...form, notas: e.target.value })} rows={3}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300" />
               </div>
             </div>
             <div className="flex justify-end gap-3 p-4 border-t sticky bottom-0 bg-white">
               <button onClick={() => setMostrarFormulario(false)}
                 className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
               <button onClick={guardarCliente}
-                className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium">
+                className="flex items-center gap-2 bg-brand-gold text-white px-5 py-2 rounded-lg hover:bg-yellow-700 text-sm font-medium">
                 <Save size={15} /> Guardar
               </button>
             </div>
