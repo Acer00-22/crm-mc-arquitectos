@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './config/supabase'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
-import { Users, Plus, X, Edit2, Save } from 'lucide-react'
+import { Plus, X, Edit2, Save } from 'lucide-react'
 
 const COLORES = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
