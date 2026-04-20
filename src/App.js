@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './config/supabase'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
-import { Plus, X, Edit2, Save, Search, Bell } from 'lucide-react'
+import { Plus, X, Edit2, Save, Search, Bell, ArrowLeft, Clock } from 'lucide-react'
 
 const COLORES = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
@@ -53,6 +53,10 @@ export default function App() {
   const [filtroFuente, setFiltroFuente] = useState('')
   const [filtroProbabilidad, setFiltroProbabilidad] = useState('')
   const [columnaActiva, setColumnaActiva] = useState('nuevo')
+  const [clienteDetalle, setClienteDetalle] = useState(null)
+  const [actividades, setActividades] = useState([])
+  const [nuevaNota, setNuevaNota] = useState('')
+  const [guardandoNota, setGuardandoNota] = useState(false)
 
   useEffect(() => {
     cargarClientes()
@@ -100,6 +104,35 @@ export default function App() {
     setForm(cliente)
     setClienteEditando(cliente.id)
     setMostrarFormulario(true)
+  }
+
+  async function abrirDetalle(cliente) {
+    setClienteDetalle(cliente)
+    setVista('detalle')
+    await cargarActividades(cliente.id)
+  }
+
+  async function cargarActividades(clienteId) {
+    const { data } = await supabase
+      .from('actividades')
+      .select('*')
+      .eq('cliente_id', clienteId)
+      .order('created_at', { ascending: false })
+    setActividades(data || [])
+  }
+
+  async function agregarNota() {
+    if (!nuevaNota.trim() || !clienteDetalle) return
+    setGuardandoNota(true)
+    await supabase.from('actividades').insert([{ cliente_id: clienteDetalle.id, nota: nuevaNota.trim() }])
+    setNuevaNota('')
+    await cargarActividades(clienteDetalle.id)
+    setGuardandoNota(false)
+  }
+
+  async function eliminarActividad(id) {
+    await supabase.from('actividades').delete().eq('id', id)
+    if (clienteDetalle) await cargarActividades(clienteDetalle.id)
   }
 
   const vencidos = clientes.filter(c => {
@@ -328,7 +361,7 @@ export default function App() {
                     <div key={c.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                       <div className="flex justify-between items-start mb-2">
                         <div>
-                          <p className="font-semibold text-gray-800">{c.nombre}</p>
+                          <button onClick={() => abrirDetalle(c)} className="font-semibold text-gray-800 hover:text-brand-gold text-left">{c.nombre}</button>
                           <p className="text-sm text-gray-500">{c.telefono}</p>
                         </div>
                         <div className="flex gap-2">
@@ -358,7 +391,7 @@ export default function App() {
                     <tbody className="divide-y divide-gray-50">
                       {clientesFiltrados.map(c => (
                         <tr key={c.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 font-medium text-gray-800">{c.nombre}</td>
+                          <td className="px-4 py-3"><button onClick={() => abrirDetalle(c)} className="font-medium text-gray-800 hover:text-brand-gold text-left">{c.nombre}</button></td>
                           <td className="px-4 py-3 text-gray-500">{c.telefono}</td>
                           <td className="px-4 py-3 text-gray-500">{c.fuente}</td>
                           <td className="px-4 py-3 text-gray-500">{c.tipo_interes}</td>
@@ -391,6 +424,82 @@ export default function App() {
           </div>
         )}
 
+        {/* DETALLE DEL CLIENTE */}
+        {vista === 'detalle' && clienteDetalle && (
+          <div>
+            <button onClick={() => setVista('clientes')}
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4">
+              <ArrowLeft size={16} /> Volver a Clientes
+            </button>
+
+            {/* Info del cliente */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800">{clienteDetalle.nombre}</h2>
+                  <div className="flex flex-wrap gap-3 mt-2 text-sm text-gray-500">
+                    {clienteDetalle.telefono && <span>📞 {clienteDetalle.telefono}</span>}
+                    {clienteDetalle.correo && <span>📧 {clienteDetalle.correo}</span>}
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {clienteDetalle.asesor && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">👤 {clienteDetalle.asesor}</span>}
+                    {clienteDetalle.fuente && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">📌 {clienteDetalle.fuente}</span>}
+                    {clienteDetalle.tipo_interes && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">🏗 {clienteDetalle.tipo_interes}</span>}
+                    {clienteDetalle.estatus && <span className={`text-xs px-2 py-1 rounded-full font-medium ${ESTATUS_COLORES[clienteDetalle.estatus] || ''}`}>{clienteDetalle.estatus}</span>}
+                    {clienteDetalle.probabilidad_cierre && <span className={`text-xs px-2 py-1 rounded-full font-medium ${PROBABILIDAD_COLORES[clienteDetalle.probabilidad_cierre] || ''}`}>{clienteDetalle.probabilidad_cierre}</span>}
+                  </div>
+                  {clienteDetalle.proxima_accion && <p className="text-xs text-gray-400 mt-2">📋 {clienteDetalle.proxima_accion}</p>}
+                  {clienteDetalle.fecha_proximo_contacto && <p className="text-xs text-gray-400 mt-1">📅 Próximo contacto: {clienteDetalle.fecha_proximo_contacto}</p>}
+                  {clienteDetalle.notas && <p className="text-sm text-gray-500 mt-2 italic">"{clienteDetalle.notas}"</p>}
+                </div>
+                <button onClick={() => editarCliente(clienteDetalle)}
+                  className="text-brand-gold hover:text-yellow-700 ml-4"><Edit2 size={18} /></button>
+              </div>
+            </div>
+
+            {/* Agregar nota */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">+ Agregar nota</h3>
+              <textarea
+                value={nuevaNota}
+                onChange={e => setNuevaNota(e.target.value)}
+                placeholder="Ej: Le envié cotización, visitó terreno en Cumbres..."
+                rows={3}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300 resize-none"
+              />
+              <div className="flex justify-end mt-2">
+                <button onClick={agregarNota} disabled={guardandoNota || !nuevaNota.trim()}
+                  className="flex items-center gap-1.5 bg-brand-gold text-white px-4 py-2 rounded-lg hover:bg-yellow-700 text-sm font-medium disabled:opacity-40">
+                  <Save size={14} /> {guardandoNota ? 'Guardando...' : 'Guardar nota'}
+                </button>
+              </div>
+            </div>
+
+            {/* Historial */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Historial de actividad</h3>
+              {actividades.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-6">Sin actividad registrada todavía</p>
+              ) : (
+                <div className="space-y-3">
+                  {actividades.map(a => (
+                    <div key={a.id} className="flex items-start gap-3 border-l-2 border-brand-gold pl-3">
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-800">{a.nota}</p>
+                        <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                          <Clock size={11} />
+                          {new Date(a.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      <button onClick={() => eliminarActividad(a.id)} className="text-gray-300 hover:text-red-400 mt-0.5"><X size={14} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* KANBAN / PIPELINE */}
         {vista === 'kanban' && (
           <div>
@@ -417,7 +526,7 @@ export default function App() {
               {clientes.filter(c => c.estatus === columnaActiva).map(c => (
                 <div key={c.id} className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-brand-gold">
                   <div className="flex justify-between items-start mb-2">
-                    <p className="font-semibold text-gray-800 text-sm">{c.nombre}</p>
+                    <button onClick={() => abrirDetalle(c)} className="font-semibold text-gray-800 text-sm hover:text-brand-gold text-left">{c.nombre}</button>
                     <div className="flex gap-2">
                       <button onClick={() => editarCliente(c)} className="text-brand-gold"><Edit2 size={13} /></button>
                       <button onClick={() => eliminarCliente(c.id)} className="text-red-400"><X size={13} /></button>
@@ -460,7 +569,7 @@ export default function App() {
                     {clientes.filter(c => c.estatus === col.key).map(c => (
                       <div key={c.id} className="bg-gray-50 rounded-lg p-3 border border-gray-100 hover:shadow-sm">
                         <div className="flex justify-between items-start mb-1">
-                          <p className="font-semibold text-gray-800 text-sm leading-tight">{c.nombre}</p>
+                          <button onClick={() => abrirDetalle(c)} className="font-semibold text-gray-800 text-sm leading-tight hover:text-brand-gold text-left">{c.nombre}</button>
                           <div className="flex gap-1 ml-1">
                             <button onClick={() => editarCliente(c)} className="text-brand-gold hover:text-yellow-700"><Edit2 size={12} /></button>
                             <button onClick={() => eliminarCliente(c.id)} className="text-red-400 hover:text-red-600"><X size={12} /></button>
