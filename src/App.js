@@ -64,6 +64,10 @@ export default function App() {
   const [actividades, setActividades] = useState([])
   const [nuevaNota, setNuevaNota] = useState('')
   const [guardandoNota, setGuardandoNota] = useState(false)
+  const [mostrarCambioPassword, setMostrarCambioPassword] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({ actual: '', nueva: '', confirmar: '' })
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordOk, setPasswordOk] = useState(false)
 
   async function iniciarSesion(e) {
     e.preventDefault()
@@ -166,6 +170,30 @@ export default function App() {
   async function eliminarActividad(id) {
     await supabase.from('actividades').delete().eq('id', id)
     if (clienteDetalle) await cargarActividades(clienteDetalle.id)
+  }
+
+  async function cambiarPassword(e) {
+    e.preventDefault()
+    setPasswordError('')
+    setPasswordOk(false)
+    if (passwordForm.actual !== usuario.password) {
+      setPasswordError('La contraseña actual es incorrecta')
+      return
+    }
+    if (passwordForm.nueva.length < 4) {
+      setPasswordError('La nueva contraseña debe tener al menos 4 caracteres')
+      return
+    }
+    if (passwordForm.nueva !== passwordForm.confirmar) {
+      setPasswordError('Las contraseñas nuevas no coinciden')
+      return
+    }
+    await supabase.from('usuarios').update({ password: passwordForm.nueva }).eq('id', usuario.id)
+    const actualizado = { ...usuario, password: passwordForm.nueva }
+    localStorage.setItem('mc_usuario', JSON.stringify(actualizado))
+    setUsuario(actualizado)
+    setPasswordForm({ actual: '', nueva: '', confirmar: '' })
+    setPasswordOk(true)
   }
 
   const clientesVisibles = usuario?.rol === 'asesor'
@@ -291,7 +319,10 @@ export default function App() {
               <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${usuario.rol === 'dueño' ? 'bg-brand-gold text-white' : 'bg-gray-600 text-gray-200'}`}>
                 {usuario.rol}
               </span>
-              <button onClick={cerrarSesion} className="text-gray-400 hover:text-white text-xs ml-1 px-2 py-1 rounded hover:bg-gray-700">
+              <button onClick={() => { setMostrarCambioPassword(true); setPasswordError(''); setPasswordOk(false) }} className="text-gray-400 hover:text-white text-xs px-2 py-1 rounded hover:bg-gray-700">
+                🔑
+              </button>
+              <button onClick={cerrarSesion} className="text-gray-400 hover:text-white text-xs px-2 py-1 rounded hover:bg-gray-700">
                 Salir
               </button>
             </div>
@@ -695,6 +726,41 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {/* MODAL CAMBIAR CONTRASEÑA */}
+      {mostrarCambioPassword && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="text-base font-bold text-gray-800">Cambiar contraseña</h3>
+              <button onClick={() => setMostrarCambioPassword(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+            <form onSubmit={cambiarPassword} className="space-y-4">
+              {[
+                { label: 'Contraseña actual', key: 'actual' },
+                { label: 'Nueva contraseña', key: 'nueva' },
+                { label: 'Confirmar nueva contraseña', key: 'confirmar' },
+              ].map(({ label, key }) => (
+                <div key={key}>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+                  <input
+                    type="password"
+                    value={passwordForm[key]}
+                    onChange={e => setPasswordForm({ ...passwordForm, [key]: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                    required
+                  />
+                </div>
+              ))}
+              {passwordError && <p className="text-xs text-red-500">{passwordError}</p>}
+              {passwordOk && <p className="text-xs text-green-600">✅ Contraseña actualizada correctamente</p>}
+              <button type="submit" className="w-full bg-brand-gold text-white py-2.5 rounded-lg font-medium text-sm hover:bg-yellow-700">
+                Guardar contraseña
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* MODAL FORMULARIO */}
       {mostrarFormulario && (
