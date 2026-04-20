@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './config/supabase'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
-import { Plus, X, Edit2, Save } from 'lucide-react'
+import { Plus, X, Edit2, Save, Search } from 'lucide-react'
 
 const COLORES = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
@@ -31,6 +31,10 @@ export default function App() {
   const [clienteEditando, setClienteEditando] = useState(null)
   const [form, setForm] = useState(clienteVacio)
   const [cargando, setCargando] = useState(true)
+  const [busqueda, setBusqueda] = useState('')
+  const [filtroEstatus, setFiltroEstatus] = useState('')
+  const [filtroFuente, setFiltroFuente] = useState('')
+  const [filtroProbabilidad, setFiltroProbabilidad] = useState('')
 
   useEffect(() => { cargarClientes() }, [])
 
@@ -65,6 +69,18 @@ export default function App() {
     setClienteEditando(cliente.id)
     setMostrarFormulario(true)
   }
+
+  const clientesFiltrados = clientes.filter(c => {
+    const texto = busqueda.toLowerCase()
+    const coincideTexto = !busqueda ||
+      c.nombre?.toLowerCase().includes(texto) ||
+      c.telefono?.toLowerCase().includes(texto) ||
+      c.correo?.toLowerCase().includes(texto)
+    const coincideEstatus = !filtroEstatus || c.estatus === filtroEstatus
+    const coincideFuente = !filtroFuente || c.fuente === filtroFuente
+    const coincideProbabilidad = !filtroProbabilidad || c.probabilidad_cierre === filtroProbabilidad
+    return coincideTexto && coincideEstatus && coincideFuente && coincideProbabilidad
+  })
 
   const porEstatus = ['nuevo', 'en seguimiento', 'cerrado', 'perdido'].map(e => ({
     name: e, value: clientes.filter(c => c.estatus === e).length
@@ -138,7 +154,7 @@ export default function App() {
                     <XAxis dataKey="mes" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} />
                     <Tooltip />
-                    <Bar dataKey="total" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="total" fill="#B8892A" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -164,7 +180,7 @@ export default function App() {
                   <XAxis type="number" tick={{ fontSize: 10 }} />
                   <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10 }} />
                   <Tooltip />
-                  <Bar dataKey="value" fill="#10b981" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="value" fill="#454852" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -182,15 +198,41 @@ export default function App() {
               </button>
             </div>
 
+            {/* Buscador y filtros */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+              <div className="relative">
+                <Search size={15} className="absolute left-3 top-2.5 text-gray-400" />
+                <input type="text" placeholder="Buscar por nombre, teléfono..." value={busqueda}
+                  onChange={e => setBusqueda(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300" />
+              </div>
+              <select value={filtroEstatus} onChange={e => setFiltroEstatus(e.target.value)}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                <option value="">Todos los estatus</option>
+                {['nuevo', 'en seguimiento', 'cerrado', 'perdido'].map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+              <select value={filtroFuente} onChange={e => setFiltroFuente(e.target.value)}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                <option value="">Todas las fuentes</option>
+                {['Facebook', 'WhatsApp', 'Instagram', 'Recomendación', 'Otro'].map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+              <select value={filtroProbabilidad} onChange={e => setFiltroProbabilidad(e.target.value)}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                <option value="">Toda probabilidad</option>
+                {['alta', 'media', 'baja'].map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </div>
+            <p className="text-xs text-gray-400 mb-3">{clientesFiltrados.length} resultado(s)</p>
+
             {cargando ? (
               <div className="text-center py-20 text-gray-400">Cargando...</div>
-            ) : clientes.length === 0 ? (
-              <div className="text-center py-20 text-gray-400">No hay clientes aún</div>
+            ) : clientesFiltrados.length === 0 ? (
+              <div className="text-center py-20 text-gray-400">No hay clientes que coincidan</div>
             ) : (
               <>
                 {/* Vista móvil - tarjetas */}
                 <div className="md:hidden space-y-3">
-                  {clientes.map(c => (
+                  {clientesFiltrados.map(c => (
                     <div key={c.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                       <div className="flex justify-between items-start mb-2">
                         <div>
@@ -223,7 +265,7 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {clientes.map(c => (
+                      {clientesFiltrados.map(c => (
                         <tr key={c.id} className="hover:bg-gray-50">
                           <td className="px-4 py-3 font-medium text-gray-800">{c.nombre}</td>
                           <td className="px-4 py-3 text-gray-500">{c.telefono}</td>
@@ -303,12 +345,12 @@ export default function App() {
               <div className="col-span-1 md:col-span-2 flex gap-6">
                 <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                   <input type="checkbox" checked={form.tiene_infonavit} onChange={e => setForm({ ...form, tiene_infonavit: e.target.checked })}
-                    className="w-4 h-4 accent-indigo-600" />
+                    className="w-4 h-4 accent-yellow-600" />
                   Tiene INFONAVIT
                 </label>
                 <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                   <input type="checkbox" checked={form.tiene_terreno} onChange={e => setForm({ ...form, tiene_terreno: e.target.checked })}
-                    className="w-4 h-4 accent-indigo-600" />
+                    className="w-4 h-4 accent-yellow-600" />
                   Tiene terreno
                 </label>
               </div>
