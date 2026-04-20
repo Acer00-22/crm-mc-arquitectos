@@ -30,8 +30,6 @@ function getSemaforo(updated_at) {
 const COLUMNAS = [
   { key: 'nuevo', label: 'Nuevo', color: 'border-blue-400', header: 'bg-blue-50' },
   { key: 'en seguimiento', label: 'En Seguimiento', color: 'border-yellow-400', header: 'bg-yellow-50' },
-  { key: 'cerrado', label: 'Cerrado', color: 'border-green-400', header: 'bg-green-50' },
-  { key: 'perdido', label: 'Perdido', color: 'border-red-400', header: 'bg-red-50' },
 ]
 
 const clienteVacio = {
@@ -1207,6 +1205,65 @@ export default function App() {
                 </div>
               ))}
             </div>
+
+            {/* TABLA HISTORIAL */}
+            {(() => {
+              const historial = clientesVisibles.filter(c => c.estatus === 'cerrado' || c.estatus === 'perdido')
+              if (historial.length === 0) return null
+              return (
+                <div className="mt-8">
+                  <h3 className="text-sm font-bold text-gray-700 mb-3">Historial de clientes ({historial.length})</h3>
+                  {/* Móvil */}
+                  <div className="md:hidden space-y-2">
+                    {historial.map(c => (
+                      <div key={c.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <button onClick={() => abrirDetalle(c)} className="font-medium text-gray-800 hover:text-brand-gold text-left text-sm">{c.nombre}</button>
+                            <p className="text-xs text-gray-400">{c.telefono}</p>
+                          </div>
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${ESTATUS_COLORES[c.estatus]}`}>{c.estatus}</span>
+                        </div>
+                        <div className="flex gap-2 mt-2 text-xs text-gray-400">
+                          {c.asesor && <span>👤 {c.asesor}</span>}
+                          {c.fuente && <span>📌 {c.fuente}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Desktop */}
+                  <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 border-b border-gray-100">
+                        <tr>
+                          {['Nombre', 'Teléfono', 'Asesor', 'Fuente', 'Probabilidad', 'Estatus', 'Acciones'].map(h => (
+                            <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {historial.map(c => (
+                          <tr key={c.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3"><button onClick={() => abrirDetalle(c)} className="font-medium text-gray-800 hover:text-brand-gold">{c.nombre}</button></td>
+                            <td className="px-4 py-3 text-gray-500">{c.telefono}</td>
+                            <td className="px-4 py-3 text-gray-500">{c.asesor}</td>
+                            <td className="px-4 py-3 text-gray-500">{c.fuente}</td>
+                            <td className="px-4 py-3">{c.probabilidad_cierre && <span className={`px-2 py-1 rounded-full text-xs font-medium ${PROBABILIDAD_COLORES[c.probabilidad_cierre]}`}>{c.probabilidad_cierre}</span>}</td>
+                            <td className="px-4 py-3"><span className={`px-2 py-1 rounded-full text-xs font-medium ${ESTATUS_COLORES[c.estatus]}`}>{c.estatus}</span></td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-2">
+                                <button onClick={() => editarCliente(c)} className="text-brand-gold hover:text-yellow-700"><Edit2 size={14} /></button>
+                                <button onClick={() => eliminarCliente(c.id)} className="text-red-400 hover:text-red-600"><X size={14} /></button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         )}
       </div>
