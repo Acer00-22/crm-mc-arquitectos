@@ -34,7 +34,7 @@ const COLUMNAS = [
 ]
 
 const clienteVacio = {
-  nombre: '', telefono: '', correo: '', tiene_infonavit: false, tiene_terreno: false,
+  nombre: '', telefono: '', correo: '', oportunidad: '', tiene_infonavit: false, tiene_terreno: false,
   ubicacion_terreno: '', fuente: '', tipo_interes: '', probabilidad_cierre: '',
   estatus: 'nuevo', asesor: '', proxima_accion: '', fecha_proximo_contacto: '', notas: ''
 }
@@ -288,9 +288,9 @@ export default function App() {
   }
 
   function exportarCSV() {
-    const columnas = ['Nombre', 'Teléfono', 'Correo', 'Estatus', 'Asesor', 'Fuente', 'Tipo de interés', 'Probabilidad', 'Tiene INFONAVIT', 'Tiene terreno', 'Ubicación terreno', 'Próxima acción', 'Fecha próximo contacto', 'Notas']
+    const columnas = ['Nombre', 'Oportunidad', 'Teléfono', 'Correo', 'Estatus', 'Asesor', 'Fuente', 'Tipo de interés', 'Probabilidad', 'Tiene INFONAVIT', 'Tiene terreno', 'Ubicación terreno', 'Próxima acción', 'Fecha próximo contacto', 'Notas']
     const filas = clientesFiltrados.map(c => [
-      c.nombre, c.telefono, c.correo, c.estatus, c.asesor, c.fuente,
+      c.nombre, c.oportunidad, c.telefono, c.correo, c.estatus, c.asesor, c.fuente,
       c.tipo_interes, c.probabilidad_cierre,
       c.tiene_infonavit ? 'Sí' : 'No', c.tiene_terreno ? 'Sí' : 'No',
       c.ubicacion_terreno, c.proxima_accion, c.fecha_proximo_contacto, c.notas
@@ -313,6 +313,7 @@ export default function App() {
 
   const CAMPO_ALIASES = {
     nombre: ['nombre', 'name', 'client', 'cliente'],
+    oportunidad: ['oportunidad', 'opportunity', 'proyecto', 'deal'],
     telefono: ['telefono', 'teléfono', 'tel', 'phone', 'celular', 'movil', 'móvil', 'whatsapp'],
     correo: ['correo', 'email', 'e-mail', 'mail'],
     tiene_infonavit: ['infonavit', 'tiene_infonavit', 'crédito', 'credito'],
@@ -783,7 +784,7 @@ export default function App() {
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50 border-b border-gray-100">
                       <tr>
-                        {['Nombre', 'Teléfono', 'Fuente', 'Tipo', 'Probabilidad', 'Estatus', 'Asesor', 'Acciones'].map(h => (
+                        {['Nombre', 'Oportunidad', 'Teléfono', 'Fuente', 'Tipo', 'Probabilidad', 'Estatus', 'Asesor', 'Acciones'].map(h => (
                           <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
                         ))}
                       </tr>
@@ -792,6 +793,7 @@ export default function App() {
                       {clientesFiltrados.map(c => (
                         <tr key={c.id} className="hover:bg-gray-50">
                           <td className="px-4 py-3"><button onClick={() => abrirDetalle(c)} className="font-medium text-gray-800 hover:text-brand-gold text-left">{c.nombre}</button></td>
+                          <td className="px-4 py-3 text-gray-500">{c.oportunidad}</td>
                           <td className="px-4 py-3 text-gray-500">{c.telefono}</td>
                           <td className="px-4 py-3 text-gray-500">{c.fuente}</td>
                           <td className="px-4 py-3 text-gray-500">{c.tipo_interes}</td>
@@ -1665,6 +1667,7 @@ export default function App() {
                 { label: 'Nombre *', key: 'nombre', type: 'text' },
                 { label: 'Teléfono', key: 'telefono', type: 'text' },
                 { label: 'Correo', key: 'correo', type: 'email' },
+                { label: 'Oportunidad', key: 'oportunidad', type: 'text' },
                 { label: 'Ubicación del terreno', key: 'ubicacion_terreno', type: 'text' },
                 { label: 'Asesor', key: 'asesor', type: 'text' },
                 { label: 'Próxima acción', key: 'proxima_accion', type: 'text' },
