@@ -18,6 +18,15 @@ const PROBABILIDAD_COLORES = {
   'baja': 'bg-red-100 text-red-800'
 }
 
+function getSemaforo(updated_at) {
+  if (!updated_at) return { color: 'bg-gray-300', label: 'Sin fecha', emoji: '⚪' }
+  const dias = Math.floor((new Date() - new Date(updated_at)) / (1000 * 60 * 60 * 24))
+  if (dias > 31) return { color: 'bg-blue-500', label: `${dias}d — Seguimiento mensual`, emoji: '🔵' }
+  if (dias >= 15) return { color: 'bg-red-500', label: `${dias}d — Alerta urgente`, emoji: '🔴' }
+  if (dias >= 7) return { color: 'bg-yellow-400', label: `${dias}d — Hay que escribirle`, emoji: '🟡' }
+  return { color: 'bg-green-500', label: `${dias}d — Al día`, emoji: '🟢' }
+}
+
 const COLUMNAS = [
   { key: 'nuevo', label: 'Nuevo', color: 'border-blue-400', header: 'bg-blue-50' },
   { key: 'en seguimiento', label: 'En Seguimiento', color: 'border-yellow-400', header: 'bg-yellow-50' },
@@ -361,6 +370,7 @@ export default function App() {
                       {c.probabilidad_cierre}
                     </span>
                   )}
+                  {(() => { const s = getSemaforo(c.updated_at); return <span className="ml-1 text-xs" title={s.label}>{s.emoji} {s.label}</span> })()}
                   {c.proxima_accion && <p className="text-xs text-gray-400 mt-2">📋 {c.proxima_accion}</p>}
                   <div className="mt-3 flex gap-1 flex-wrap">
                     {COLUMNAS.filter(col => col.key !== c.estatus).map(col => (
@@ -404,7 +414,8 @@ export default function App() {
                             {c.probabilidad_cierre}
                           </span>
                         )}
-                        {c.proxima_accion && <p className="text-xs text-gray-400 mt-2">📋 {c.proxima_accion}</p>}
+                        {(() => { const s = getSemaforo(c.updated_at); return <p className="text-xs mt-1" title={s.label}>{s.emoji} {s.label}</p> })()}
+                        {c.proxima_accion && <p className="text-xs text-gray-400 mt-1">📋 {c.proxima_accion}</p>}
                         <div className="mt-2 flex gap-1 flex-wrap">
                           {COLUMNAS.filter(dest => dest.key !== col.key).map(dest => (
                             <button key={dest.key} onClick={() => cambiarEstatus(c.id, dest.key)}
