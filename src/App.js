@@ -44,7 +44,16 @@ export default function App() {
   const [filtroProbabilidad, setFiltroProbabilidad] = useState('')
   const [columnaActiva, setColumnaActiva] = useState('nuevo')
 
-  useEffect(() => { cargarClientes() }, [])
+  useEffect(() => {
+    cargarClientes()
+    const canal = supabase
+      .channel('clientes-cambios')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, () => {
+        cargarClientes()
+      })
+      .subscribe()
+    return () => supabase.removeChannel(canal)
+  }, [])
 
   async function cargarClientes() {
     setCargando(true)
