@@ -182,12 +182,18 @@ export default function App() {
     ].map(v => `"${(v || '').toString().replace(/"/g, '""')}"`))
     const csv = '\uFEFF' + [columnas.join(','), ...filas.map(f => f.join(','))].join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `clientes-mc-arquitectos-${new Date().toISOString().slice(0, 10)}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    const filename = `clientes-mc-arquitectos-${new Date().toISOString().slice(0, 10)}.csv`
+    if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+      window.navigator.msSaveOrOpenBlob(blob, filename)
+    } else {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 200)
+    }
   }
 
   async function cambiarPassword(e) {
