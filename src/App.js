@@ -87,65 +87,69 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-indigo-700 text-white px-6 py-4 flex items-center justify-between shadow">
-        <div className="flex items-center gap-3">
-          <div className="bg-white bg-opacity-20 p-2 rounded-lg">
-            <Users size={22} />
+      {/* Header */}
+      <div className="bg-indigo-700 text-white px-4 py-3 shadow sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="bg-white bg-opacity-20 p-1.5 rounded-lg">
+              <Users size={18} />
+            </div>
+            <div>
+              <h1 className="text-sm font-bold leading-tight">MC Arquitectos CRM</h1>
+              <p className="text-indigo-200 text-xs">{clientes.length} clientes</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-bold">MC Arquitectos CRM</h1>
-            <p className="text-indigo-200 text-xs">{clientes.length} clientes registrados</p>
+          <div className="flex gap-1">
+            <button onClick={() => setVista('dashboard')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium ${vista === 'dashboard' ? 'bg-white text-indigo-700' : 'text-white hover:bg-indigo-600'}`}>
+              Dashboard
+            </button>
+            <button onClick={() => setVista('clientes')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium ${vista === 'clientes' ? 'bg-white text-indigo-700' : 'text-white hover:bg-indigo-600'}`}>
+              Clientes
+            </button>
           </div>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => setVista('dashboard')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${vista === 'dashboard' ? 'bg-white text-indigo-700' : 'text-white hover:bg-indigo-600'}`}>
-            Dashboard
-          </button>
-          <button onClick={() => setVista('clientes')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${vista === 'clientes' ? 'bg-white text-indigo-700' : 'text-white hover:bg-indigo-600'}`}>
-            Clientes
-          </button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-6">
 
+        {/* DASHBOARD */}
         {vista === 'dashboard' && (
           <div>
-            <div className="grid grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
               {[
                 { label: 'Total Leads', value: clientes.length },
                 { label: 'Nuevos', value: clientes.filter(c => c.estatus === 'nuevo').length },
-                { label: 'En Seguimiento', value: clientes.filter(c => c.estatus === 'en seguimiento').length },
+                { label: 'Seguimiento', value: clientes.filter(c => c.estatus === 'en seguimiento').length },
                 { label: 'Cerrados', value: clientes.filter(c => c.estatus === 'cerrado').length },
               ].map((t, i) => (
-                <div key={i} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-                  <p className="text-gray-500 text-sm">{t.label}</p>
-                  <p className="text-3xl font-bold text-gray-800 mt-1">{t.value}</p>
+                <div key={i} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                  <p className="text-gray-500 text-xs">{t.label}</p>
+                  <p className="text-2xl font-bold text-gray-800 mt-1">{t.value}</p>
                 </div>
               ))}
             </div>
 
-            <div className="grid grid-cols-2 gap-6 mb-6">
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <h3 className="font-semibold text-gray-700 mb-4">Leads por mes</h3>
-                <ResponsiveContainer width="100%" height={220}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                <h3 className="font-semibold text-gray-700 mb-3 text-sm">Leads por mes</h3>
+                <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={porMes()}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
-                    <YAxis />
+                    <XAxis dataKey="mes" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} />
                     <Tooltip />
                     <Bar dataKey="total" fill="#6366f1" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
 
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <h3 className="font-semibold text-gray-700 mb-4">Leads por estatus</h3>
-                <ResponsiveContainer width="100%" height={220}>
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                <h3 className="font-semibold text-gray-700 mb-3 text-sm">Leads por estatus</h3>
+                <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
-                    <Pie data={porEstatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, value }) => `${name}: ${value}`}>
+                    <Pie data={porEstatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, value }) => `${name}: ${value}`}>
                       {porEstatus.map((_, i) => <Cell key={i} fill={COLORES[i % COLORES.length]} />)}
                     </Pie>
                     <Tooltip />
@@ -154,13 +158,13 @@ export default function App() {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <h3 className="font-semibold text-gray-700 mb-4">Leads por fuente</h3>
-              <ResponsiveContainer width="100%" height={200}>
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+              <h3 className="font-semibold text-gray-700 mb-3 text-sm">Leads por fuente</h3>
+              <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={porFuente} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} />
+                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10 }} />
                   <Tooltip />
                   <Bar dataKey="value" fill="#10b981" radius={[0, 4, 4, 0]} />
                 </BarChart>
@@ -169,13 +173,14 @@ export default function App() {
           </div>
         )}
 
+        {/* CLIENTES */}
         {vista === 'clientes' && (
           <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-800">Clientes</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-gray-800">Clientes</h2>
               <button onClick={() => { setForm(clienteVacio); setClienteEditando(null); setMostrarFormulario(true) }}
-                className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium">
-                <Plus size={16} /> Nuevo cliente
+                className="flex items-center gap-1.5 bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium">
+                <Plus size={15} /> Nuevo
               </button>
             </div>
 
@@ -184,59 +189,87 @@ export default function App() {
             ) : clientes.length === 0 ? (
               <div className="text-center py-20 text-gray-400">No hay clientes aún</div>
             ) : (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-100">
-                    <tr>
-                      {['Nombre', 'Teléfono', 'Fuente', 'Tipo', 'Probabilidad', 'Estatus', 'Asesor', 'Acciones'].map(h => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {clientes.map(c => (
-                      <tr key={c.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 font-medium text-gray-800">{c.nombre}</td>
-                        <td className="px-4 py-3 text-gray-500">{c.telefono}</td>
-                        <td className="px-4 py-3 text-gray-500">{c.fuente}</td>
-                        <td className="px-4 py-3 text-gray-500">{c.tipo_interes}</td>
-                        <td className="px-4 py-3">
-                          {c.probabilidad_cierre && (
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${PROBABILIDAD_COLORES[c.probabilidad_cierre] || ''}`}>
-                              {c.probabilidad_cierre}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${ESTATUS_COLORES[c.estatus] || ''}`}>
-                            {c.estatus}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-gray-500">{c.asesor}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-2">
-                            <button onClick={() => editarCliente(c)} className="text-indigo-500 hover:text-indigo-700"><Edit2 size={15} /></button>
-                            <button onClick={() => eliminarCliente(c.id)} className="text-red-400 hover:text-red-600"><X size={15} /></button>
-                          </div>
-                        </td>
+              <>
+                {/* Vista móvil - tarjetas */}
+                <div className="md:hidden space-y-3">
+                  {clientes.map(c => (
+                    <div key={c.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <p className="font-semibold text-gray-800">{c.nombre}</p>
+                          <p className="text-sm text-gray-500">{c.telefono}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => editarCliente(c)} className="text-indigo-500"><Edit2 size={15} /></button>
+                          <button onClick={() => eliminarCliente(c.id)} className="text-red-400"><X size={15} /></button>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ESTATUS_COLORES[c.estatus] || ''}`}>{c.estatus}</span>
+                        {c.probabilidad_cierre && <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PROBABILIDAD_COLORES[c.probabilidad_cierre] || ''}`}>{c.probabilidad_cierre}</span>}
+                        {c.fuente && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{c.fuente}</span>}
+                      </div>
+                      {c.proxima_accion && <p className="text-xs text-gray-500 mt-2">📋 {c.proxima_accion}</p>}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Vista desktop - tabla */}
+                <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 border-b border-gray-100">
+                      <tr>
+                        {['Nombre', 'Teléfono', 'Fuente', 'Tipo', 'Probabilidad', 'Estatus', 'Asesor', 'Acciones'].map(h => (
+                          <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {clientes.map(c => (
+                        <tr key={c.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 font-medium text-gray-800">{c.nombre}</td>
+                          <td className="px-4 py-3 text-gray-500">{c.telefono}</td>
+                          <td className="px-4 py-3 text-gray-500">{c.fuente}</td>
+                          <td className="px-4 py-3 text-gray-500">{c.tipo_interes}</td>
+                          <td className="px-4 py-3">
+                            {c.probabilidad_cierre && (
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${PROBABILIDAD_COLORES[c.probabilidad_cierre] || ''}`}>
+                                {c.probabilidad_cierre}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${ESTATUS_COLORES[c.estatus] || ''}`}>
+                              {c.estatus}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-500">{c.asesor}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex gap-2">
+                              <button onClick={() => editarCliente(c)} className="text-indigo-500 hover:text-indigo-700"><Edit2 size={15} /></button>
+                              <button onClick={() => eliminarCliente(c.id)} className="text-red-400 hover:text-red-600"><X size={15} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         )}
       </div>
 
+      {/* MODAL FORMULARIO */}
       {mostrarFormulario && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-screen overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-lg font-bold text-gray-800">{clienteEditando ? 'Editar cliente' : 'Nuevo cliente'}</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-end md:items-center justify-center z-50">
+          <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-4 border-b sticky top-0 bg-white">
+              <h3 className="text-base font-bold text-gray-800">{clienteEditando ? 'Editar cliente' : 'Nuevo cliente'}</h3>
               <button onClick={() => setMostrarFormulario(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
             </div>
-            <div className="p-6 grid grid-cols-2 gap-4">
+            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
               {[
                 { label: 'Nombre *', key: 'nombre', type: 'text' },
                 { label: 'Teléfono', key: 'telefono', type: 'text' },
@@ -269,7 +302,7 @@ export default function App() {
                 </div>
               ))}
 
-              <div className="col-span-2 flex gap-6">
+              <div className="col-span-1 md:col-span-2 flex gap-6">
                 <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                   <input type="checkbox" checked={form.tiene_infonavit} onChange={e => setForm({ ...form, tiene_infonavit: e.target.checked })}
                     className="w-4 h-4 accent-indigo-600" />
@@ -282,13 +315,13 @@ export default function App() {
                 </label>
               </div>
 
-              <div className="col-span-2">
+              <div className="col-span-1 md:col-span-2">
                 <label className="block text-xs font-medium text-gray-600 mb-1">Notas</label>
                 <textarea value={form.notas || ''} onChange={e => setForm({ ...form, notas: e.target.value })} rows={3}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
               </div>
             </div>
-            <div className="flex justify-end gap-3 p-6 border-t">
+            <div className="flex justify-end gap-3 p-4 border-t sticky bottom-0 bg-white">
               <button onClick={() => setMostrarFormulario(false)}
                 className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
               <button onClick={guardarCliente}
