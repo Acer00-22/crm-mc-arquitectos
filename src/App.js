@@ -244,6 +244,11 @@ export default function App() {
     cargarClientes()
   }
 
+  async function marcarContactado(id) {
+    await supabase.from('clientes').update({ updated_at: new Date().toISOString() }).eq('id', id)
+    cargarClientes()
+  }
+
   async function cambiarEstatus(id, nuevoEstatus) {
     await supabase.from('clientes').update({ estatus: nuevoEstatus }).eq('id', id)
     cargarClientes()
@@ -792,8 +797,8 @@ export default function App() {
               })()}
             </div>
 
-            {/* FILA 2: Pipeline este mes + Eventos de hoy */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* FILA 2: Pipeline este mes + Próximos a vencer + Eventos de hoy */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
               {/* PIPELINE ESTE MES */}
               {(() => {
@@ -879,6 +884,57 @@ export default function App() {
                     </div>
                     <div className="border-t border-gray-100 px-5 py-3">
                       <button onClick={() => setVista('agenda')} className="text-sm text-brand-gold font-medium hover:underline">Ver Agenda →</button>
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* PRÓXIMOS A VENCER */}
+              {(() => {
+                const urgentes = clientesVisibles
+                  .filter(c => c.estatus !== 'cerrado' && c.estatus !== 'perdido' && c.updated_at)
+                  .map(c => {
+                    const dias = Math.floor((new Date() - new Date(c.updated_at)) / (1000 * 60 * 60 * 24))
+                    return { ...c, dias }
+                  })
+                  .filter(c => c.dias >= 5)
+                  .sort((a, b) => b.dias - a.dias)
+                  .slice(0, 5)
+                return (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col">
+                    <div className="px-5 pt-5 pb-2">
+                      <h3 className="font-bold text-gray-800 text-sm">Próximos a Vencer</h3>
+                      <p className="text-xs text-gray-400 mt-0.5">Clientes sin contacto reciente</p>
+                    </div>
+                    <div className="px-4 py-3 flex-1 space-y-2 overflow-y-auto max-h-52">
+                      {urgentes.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full text-center py-6 text-gray-400">
+                          <span className="text-3xl mb-2">✅</span>
+                          <p className="text-sm">¡Todo al día!</p>
+                        </div>
+                      ) : urgentes.map(c => {
+                        const sem = getSemaforo(c.updated_at)
+                        return (
+                          <div key={c.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2">
+                            <span className="text-base flex-shrink-0">{sem.emoji}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-800 truncate">{c.nombre}</p>
+                              <p className="text-xs text-gray-400">{c.dias} días sin contacto</p>
+                            </div>
+                            <button
+                              onClick={() => marcarContactado(c.id)}
+                              title="Marcar como contactado"
+                              className="w-7 h-7 rounded-full border-2 border-gray-300 hover:border-green-500 hover:bg-green-50 flex items-center justify-center flex-shrink-0 transition-colors group">
+                              <svg className="w-3.5 h-3.5 text-gray-300 group-hover:text-green-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div className="border-t border-gray-100 px-5 py-3">
+                      <button onClick={() => setVista('clientes')} className="text-sm text-brand-gold font-medium hover:underline">Ver Clientes →</button>
                     </div>
                   </div>
                 )
