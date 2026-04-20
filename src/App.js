@@ -68,6 +68,16 @@ export default function App() {
   const [passwordForm, setPasswordForm] = useState({ actual: '', nueva: '', confirmar: '' })
   const [passwordError, setPasswordError] = useState('')
   const [passwordOk, setPasswordOk] = useState(false)
+  const [citas, setCitas] = useState([])
+  const [tareas, setTareas] = useState([])
+  const [mesCalendario, setMesCalendario] = useState(() => {
+    const h = new Date(); return { year: h.getFullYear(), month: h.getMonth() }
+  })
+  const [diaSeleccionado, setDiaSeleccionado] = useState(null)
+  const [mostrarFormCita, setMostrarFormCita] = useState(false)
+  const [mostrarFormTarea, setMostrarFormTarea] = useState(false)
+  const [formCita, setFormCita] = useState({ titulo: '', fecha: '', hora: '', asesor: '', notas: '', cliente_id: '' })
+  const [formTarea, setFormTarea] = useState({ titulo: '', descripcion: '', prioridad: 'media', fecha_limite: '', asesor: '' })
 
   async function iniciarSesion(e) {
     e.preventDefault()
@@ -97,14 +107,57 @@ export default function App() {
   useEffect(() => {
     if (!usuario) return
     cargarClientes()
+    cargarCitas()
+    cargarTareas()
     const canal = supabase
       .channel('clientes-cambios')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, () => {
-        cargarClientes()
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, () => cargarClientes())
       .subscribe()
     return () => supabase.removeChannel(canal)
   }, [usuario])
+
+  async function cargarCitas() {
+    const { data } = await supabase.from('citas').select('*, clientes(nombre)').order('fecha').order('hora')
+    setCitas(data || [])
+  }
+
+  async function cargarTareas() {
+    const { data } = await supabase.from('tareas').select('*').order('fecha_limite').order('created_at', { ascending: false })
+    setTareas(data || [])
+  }
+
+  async function guardarCita(e) {
+    e.preventDefault()
+    const datos = { ...formCita, cliente_id: formCita.cliente_id || null, asesor: formCita.asesor || usuario.nombre }
+    await supabase.from('citas').insert([datos])
+    setMostrarFormCita(false)
+    setFormCita({ titulo: '', fecha: '', hora: '', asesor: '', notas: '', cliente_id: '' })
+    cargarCitas()
+  }
+
+  async function eliminarCita(id) {
+    await supabase.from('citas').delete().eq('id', id)
+    cargarCitas()
+  }
+
+  async function guardarTarea(e) {
+    e.preventDefault()
+    const datos = { ...formTarea, asesor: formTarea.asesor || usuario.nombre }
+    await supabase.from('tareas').insert([datos])
+    setMostrarFormTarea(false)
+    setFormTarea({ titulo: '', descripcion: '', prioridad: 'media', fecha_limite: '', asesor: '' })
+    cargarTareas()
+  }
+
+  async function completarTarea(id, completada) {
+    await supabase.from('tareas').update({ completada }).eq('id', id)
+    cargarTareas()
+  }
+
+  async function eliminarTarea(id) {
+    await supabase.from('tareas').delete().eq('id', id)
+    cargarTareas()
+  }
 
   async function cargarClientes() {
     setCargando(true)
@@ -329,6 +382,10 @@ export default function App() {
             <button onClick={() => setVista('kanban')}
               className={`px-2.5 py-1.5 rounded-lg text-xs font-medium ${vista === 'kanban' ? 'bg-brand-gold text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
               Pipeline
+            </button>
+            <button onClick={() => setVista('agenda')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium ${vista === 'agenda' ? 'bg-brand-gold text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
+              Agenda
             </button>
             <button onClick={() => setMostrarAlertas(v => !v)} className="relative ml-1 p-1.5 rounded-lg hover:bg-gray-700">
               <Bell size={16} className="text-gray-300" />
@@ -620,6 +677,14 @@ export default function App() {
               </div>
             </div>
 
+            {/* Agendar cita rápida */}
+            <div className="mb-4">
+              <button onClick={() => { setFormCita({ titulo: `Cita con ${clienteDetalle.nombre}`, fecha: '', hora: '', asesor: usuario.nombre, notas: '', cliente_id: clienteDetalle.id }); setMostrarFormCita(true) }}
+                className="flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-100 w-full justify-center">
+                📅 Agendar cita con este cliente
+              </button>
+            </div>
+
             {/* Agregar nota */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
               <h3 className="text-sm font-semibold text-gray-700 mb-3">+ Agregar nota</h3>
@@ -662,6 +727,156 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* AGENDA */}
+        {vista === 'agenda' && (() => {
+          const hoy = new Date()
+          const { year, month } = mesCalendario
+          const primerDia = new Date(year, month, 1).getDay()
+          const diasEnMes = new Date(year, month + 1, 0).getDate()
+          const nombreMes = new Date(year, month).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
+          const citasVisibles = usuario?.rol === 'asesor' ? citas.filter(c => c.asesor === usuario.nombre) : citas
+          const tareasVisibles = usuario?.rol === 'asesor' ? tareas.filter(t => t.asesor === usuario.nombre) : tareas
+          const citasDia = diaSeleccionado ? citasVisibles.filter(c => c.fecha === diaSeleccionado) : []
+          const PRIORIDAD_COLORES = { alta: 'bg-red-100 text-red-700 border-red-200', media: 'bg-yellow-100 text-yellow-700 border-yellow-200', baja: 'bg-green-100 text-green-700 border-green-200' }
+
+          return (
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-bold text-gray-800">Agenda</h2>
+                <div className="flex gap-2">
+                  <button onClick={() => { setFormTarea({ titulo: '', descripcion: '', prioridad: 'media', fecha_limite: '', asesor: usuario.nombre }); setMostrarFormTarea(true) }}
+                    className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-50">
+                    ✅ Nueva tarea
+                  </button>
+                  <button onClick={() => { setFormCita({ titulo: '', fecha: diaSeleccionado || '', hora: '', asesor: usuario.nombre, notas: '', cliente_id: '' }); setMostrarFormCita(true) }}
+                    className="flex items-center gap-1.5 bg-brand-gold text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-yellow-700">
+                    <Plus size={15} /> Nueva cita
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Calendario */}
+                <div className="md:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <button onClick={() => setMesCalendario(m => { const d = new Date(m.year, m.month - 1); return { year: d.getFullYear(), month: d.getMonth() } })}
+                      className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500">‹</button>
+                    <h3 className="text-sm font-semibold text-gray-700 capitalize">{nombreMes}</h3>
+                    <button onClick={() => setMesCalendario(m => { const d = new Date(m.year, m.month + 1); return { year: d.getFullYear(), month: d.getMonth() } })}
+                      className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500">›</button>
+                  </div>
+                  <div className="grid grid-cols-7 mb-2">
+                    {['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'].map(d => (
+                      <div key={d} className="text-center text-xs font-medium text-gray-400 py-1">{d}</div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7 gap-0.5">
+                    {Array(primerDia).fill(null).map((_, i) => <div key={`v${i}`} />)}
+                    {Array.from({ length: diasEnMes }, (_, i) => i + 1).map(dia => {
+                      const fechaStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
+                      const tieneCitas = citasVisibles.some(c => c.fecha === fechaStr)
+                      const esHoy = hoy.getDate() === dia && hoy.getMonth() === month && hoy.getFullYear() === year
+                      const seleccionado = diaSeleccionado === fechaStr
+                      return (
+                        <button key={dia} onClick={() => setDiaSeleccionado(seleccionado ? null : fechaStr)}
+                          className={`relative aspect-square flex flex-col items-center justify-center rounded-lg text-sm font-medium transition-colors
+                            ${seleccionado ? 'bg-brand-gold text-white' : esHoy ? 'bg-brand-dark text-white' : 'hover:bg-gray-50 text-gray-700'}`}>
+                          {dia}
+                          {tieneCitas && <span className={`absolute bottom-1 w-1 h-1 rounded-full ${seleccionado ? 'bg-white' : 'bg-brand-gold'}`} />}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Citas del día seleccionado */}
+                  {diaSeleccionado && (
+                    <div className="mt-4 border-t pt-4">
+                      <h4 className="text-xs font-semibold text-gray-500 mb-2">
+                        {new Date(diaSeleccionado + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      </h4>
+                      {citasDia.length === 0 ? (
+                        <p className="text-xs text-gray-400">Sin citas este día</p>
+                      ) : citasDia.map(c => (
+                        <div key={c.id} className="flex items-start justify-between bg-blue-50 rounded-lg px-3 py-2 mb-2 border border-blue-100">
+                          <div>
+                            <p className="text-sm font-medium text-gray-800">{c.titulo}</p>
+                            <p className="text-xs text-gray-500">{c.hora && `🕐 ${c.hora.slice(0,5)}`} {c.asesor && `· ${c.asesor}`} {c.clientes?.nombre && `· 👤 ${c.clientes.nombre}`}</p>
+                            {c.notas && <p className="text-xs text-gray-400 mt-0.5">{c.notas}</p>}
+                          </div>
+                          <button onClick={() => eliminarCita(c.id)} className="text-gray-300 hover:text-red-400 ml-2"><X size={14} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Próximas citas */}
+                  {!diaSeleccionado && (
+                    <div className="mt-4 border-t pt-4">
+                      <h4 className="text-xs font-semibold text-gray-500 mb-2">Próximas citas</h4>
+                      {citasVisibles.filter(c => c.fecha >= new Date().toISOString().slice(0,10)).slice(0, 5).length === 0 ? (
+                        <p className="text-xs text-gray-400">No hay citas próximas</p>
+                      ) : citasVisibles.filter(c => c.fecha >= new Date().toISOString().slice(0,10)).slice(0, 5).map(c => (
+                        <div key={c.id} className="flex items-start justify-between bg-gray-50 rounded-lg px-3 py-2 mb-2">
+                          <div>
+                            <p className="text-sm font-medium text-gray-800">{c.titulo}</p>
+                            <p className="text-xs text-gray-500">📅 {c.fecha} {c.hora && `· 🕐 ${c.hora.slice(0,5)}`} {c.clientes?.nombre && `· 👤 ${c.clientes.nombre}`}</p>
+                          </div>
+                          <button onClick={() => eliminarCita(c.id)} className="text-gray-300 hover:text-red-400 ml-2"><X size={14} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Tareas */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Tareas pendientes</h3>
+                  {tareasVisibles.filter(t => !t.completada).length === 0 && (
+                    <p className="text-xs text-gray-400 mb-3">Sin tareas pendientes 🎉</p>
+                  )}
+                  <div className="space-y-2 mb-4">
+                    {tareasVisibles.filter(t => !t.completada).sort((a, b) => {
+                      const p = { alta: 0, media: 1, baja: 2 }
+                      return p[a.prioridad] - p[b.prioridad]
+                    }).map(t => (
+                      <div key={t.id} className={`rounded-lg px-3 py-2 border ${PRIORIDAD_COLORES[t.prioridad]}`}>
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-2">
+                            <input type="checkbox" checked={false} onChange={() => completarTarea(t.id, true)}
+                              className="mt-0.5 accent-yellow-600 cursor-pointer" />
+                            <div>
+                              <p className="text-sm font-medium">{t.titulo}</p>
+                              {t.descripcion && <p className="text-xs opacity-70 mt-0.5">{t.descripcion}</p>}
+                              {t.fecha_limite && <p className="text-xs opacity-60 mt-0.5">📅 {t.fecha_limite}</p>}
+                            </div>
+                          </div>
+                          <button onClick={() => eliminarTarea(t.id)} className="opacity-40 hover:opacity-80 ml-1"><X size={13} /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {tareasVisibles.filter(t => t.completada).length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-gray-400 mb-2">Completadas</h4>
+                      {tareasVisibles.filter(t => t.completada).slice(0, 5).map(t => (
+                        <div key={t.id} className="flex items-center justify-between px-3 py-2 mb-1">
+                          <div className="flex items-center gap-2">
+                            <input type="checkbox" checked={true} onChange={() => completarTarea(t.id, false)}
+                              className="accent-yellow-600 cursor-pointer" />
+                            <span className="text-xs text-gray-400 line-through">{t.titulo}</span>
+                          </div>
+                          <button onClick={() => eliminarTarea(t.id)} className="text-gray-200 hover:text-red-400"><X size={12} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* KANBAN / PIPELINE */}
         {vista === 'kanban' && (
@@ -767,6 +982,99 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {/* MODAL NUEVA CITA */}
+      {mostrarFormCita && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-end md:items-center justify-center z-50">
+          <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-md p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-base font-bold text-gray-800">Nueva cita</h3>
+              <button onClick={() => setMostrarFormCita(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+            <form onSubmit={guardarCita} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Título *</label>
+                <input type="text" required value={formCita.titulo} onChange={e => setFormCita({ ...formCita, titulo: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Fecha *</label>
+                  <input type="date" required value={formCita.fecha} onChange={e => setFormCita({ ...formCita, fecha: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Hora</label>
+                  <input type="time" value={formCita.hora} onChange={e => setFormCita({ ...formCita, hora: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Asesor</label>
+                <input type="text" value={formCita.asesor} onChange={e => setFormCita({ ...formCita, asesor: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Notas</label>
+                <textarea rows={2} value={formCita.notas} onChange={e => setFormCita({ ...formCita, notas: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300 resize-none" />
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setMostrarFormCita(false)} className="text-sm text-gray-500">Cancelar</button>
+                <button type="submit" className="flex items-center gap-2 bg-brand-gold text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-yellow-700">
+                  <Save size={14} /> Guardar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL NUEVA TAREA */}
+      {mostrarFormTarea && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-end md:items-center justify-center z-50">
+          <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-md p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-base font-bold text-gray-800">Nueva tarea</h3>
+              <button onClick={() => setMostrarFormTarea(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+            <form onSubmit={guardarTarea} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Título *</label>
+                <input type="text" required value={formTarea.titulo} onChange={e => setFormTarea({ ...formTarea, titulo: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Descripción</label>
+                <textarea rows={2} value={formTarea.descripcion} onChange={e => setFormTarea({ ...formTarea, descripcion: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300 resize-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Prioridad</label>
+                  <select value={formTarea.prioridad} onChange={e => setFormTarea({ ...formTarea, prioridad: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                    <option value="alta">🔴 Alta</option>
+                    <option value="media">🟡 Media</option>
+                    <option value="baja">🟢 Baja</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Fecha límite</label>
+                  <input type="date" value={formTarea.fecha_limite} onChange={e => setFormTarea({ ...formTarea, fecha_limite: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setMostrarFormTarea(false)} className="text-sm text-gray-500">Cancelar</button>
+                <button type="submit" className="flex items-center gap-2 bg-brand-gold text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-yellow-700">
+                  <Save size={14} /> Guardar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* MODAL CAMBIAR CONTRASEÑA */}
       {mostrarCambioPassword && (
