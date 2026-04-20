@@ -84,18 +84,17 @@ export default function App() {
     e.preventDefault()
     setLoginCargando(true)
     setLoginError('')
-    const { data, error } = await supabase.from('usuarios').select('*')
-    if (error) { setLoginError(`Error: ${error.message}`); setLoginCargando(false); return }
-    if (!data || data.length === 0) { setLoginError('No se pudo conectar a la base de datos'); setLoginCargando(false); return }
-    const encontrado = data.find(u =>
-      u.nombre.toLowerCase() === loginForm.nombre.trim().toLowerCase() &&
-      u.password === loginForm.password
-    )
+    const { data, error } = await supabase.rpc('login_usuario', {
+      p_nombre: loginForm.nombre.trim(),
+      p_password: loginForm.password
+    })
+    if (error) { setLoginError('Error de conexión, intenta de nuevo'); setLoginCargando(false); return }
+    const encontrado = data && data.length > 0 ? data[0] : null
     if (encontrado) {
       localStorage.setItem('mc_usuario', JSON.stringify(encontrado))
       setUsuario(encontrado)
     } else {
-      setLoginError(`Usuarios disponibles: ${data.map(u => u.nombre).join(', ')}`)
+      setLoginError('Usuario o contraseña incorrectos')
     }
     setLoginCargando(false)
   }
