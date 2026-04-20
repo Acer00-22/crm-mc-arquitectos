@@ -440,16 +440,16 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-brand-dark text-white px-4 py-3 shadow sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src="/logo.jpeg" alt="MC Arquitectos" className="w-9 h-9 rounded-full object-cover border-2 border-brand-gold" />
-            <div>
-              <h1 className="text-sm font-bold leading-tight text-brand-gold">MC Arquitectos</h1>
+      <div className="bg-brand-dark text-white shadow sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-3 py-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 shrink-0">
+            <img src="/logo.jpeg" alt="MC Arquitectos" className="w-8 h-8 rounded-full object-cover border-2 border-brand-gold" />
+            <div className="hidden sm:block">
+              <h1 className="text-xs font-bold leading-tight text-brand-gold">MC Arquitectos</h1>
               <p className="text-gray-300 text-xs">{clientesVisibles.length} clientes</p>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide flex-1 justify-end">
             <button onClick={() => setVista('dashboard')}
               className={`px-2.5 py-1.5 rounded-lg text-xs font-medium ${vista === 'dashboard' ? 'bg-brand-gold text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
               Dashboard
@@ -561,6 +561,7 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                 <h3 className="font-semibold text-gray-700 mb-3 text-sm">Leads por mes</h3>
+                {porMes().length === 0 ? <p className="text-center text-gray-300 text-sm py-10">Sin datos todavía</p> :
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={porMes()}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -569,11 +570,12 @@ export default function App() {
                     <Tooltip />
                     <Bar dataKey="total" fill="#B8892A" radius={[4, 4, 0, 0]} />
                   </BarChart>
-                </ResponsiveContainer>
+                </ResponsiveContainer>}
               </div>
 
               <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                 <h3 className="font-semibold text-gray-700 mb-3 text-sm">Leads por estatus</h3>
+                {porEstatus.length === 0 ? <p className="text-center text-gray-300 text-sm py-10">Sin datos todavía</p> :
                 <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
                     <Pie data={porEstatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, value }) => `${name}: ${value}`}>
@@ -581,12 +583,13 @@ export default function App() {
                     </Pie>
                     <Tooltip />
                   </PieChart>
-                </ResponsiveContainer>
+                </ResponsiveContainer>}
               </div>
             </div>
 
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
               <h3 className="font-semibold text-gray-700 mb-3 text-sm">Leads por fuente</h3>
+              {porFuente.length === 0 ? <p className="text-center text-gray-300 text-sm py-10">Sin datos todavía</p> :
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={porFuente} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" />
@@ -595,7 +598,7 @@ export default function App() {
                   <Tooltip />
                   <Bar dataKey="value" fill="#454852" radius={[0, 4, 4, 0]} />
                 </BarChart>
-              </ResponsiveContainer>
+              </ResponsiveContainer>}
             </div>
           </div>
         )}
