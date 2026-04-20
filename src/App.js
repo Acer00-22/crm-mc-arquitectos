@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from './config/supabase'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
-import { Plus, X, Edit2, Save, Search, Bell, ArrowLeft, Clock, Eye, EyeOff } from 'lucide-react'
+import { Plus, X, Edit2, Save, Search, Bell, ArrowLeft, Clock, Eye, EyeOff, Upload } from 'lucide-react'
+import * as XLSX from 'xlsx'
 
 const COLORES = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
@@ -82,6 +83,11 @@ export default function App() {
   const [campanaClientes, setCampanaClientes] = useState([])
   const [mostrarFormCampana, setMostrarFormCampana] = useState(false)
   const [formCampana, setFormCampana] = useState({ nombre: '', descripcion: '', filtro_estatus: '', filtro_fuente: '' })
+  const [importModal, setImportModal] = useState(false)
+  const [importPreview, setImportPreview] = useState([])
+  const [importCargando, setImportCargando] = useState(false)
+  const [importResultado, setImportResultado] = useState(null)
+  const importInputRef = useRef(null)
 
   async function iniciarSesion(e) {
     e.preventDefault()
@@ -303,6 +309,103 @@ export default function App() {
       a.click()
       setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 200)
     }
+  }
+
+  const CAMPO_ALIASES = {
+    nombre: ['nombre', 'name', 'client', 'cliente'],
+    telefono: ['telefono', 'teléfono', 'tel', 'phone', 'celular', 'movil', 'móvil', 'whatsapp'],
+    correo: ['correo', 'email', 'e-mail', 'mail'],
+    tiene_infonavit: ['infonavit', 'tiene_infonavit', 'crédito', 'credito'],
+    tiene_terreno: ['terreno', 'tiene_terreno'],
+    ubicacion_terreno: ['ubicacion', 'ubicación', 'ubicacion_terreno', 'ubicación_terreno', 'colonia', 'direccion', 'dirección'],
+    fuente: ['fuente', 'source', 'origen'],
+    tipo_interes: ['tipo_interes', 'tipo', 'interes', 'interés', 'tipo de interes', 'tipo de interés'],
+    probabilidad_cierre: ['probabilidad', 'probabilidad_cierre', 'prioridad'],
+    estatus: ['estatus', 'status', 'estado'],
+    asesor: ['asesor', 'vendedor', 'agente', 'responsable'],
+    proxima_accion: ['proxima_accion', 'próxima_acción', 'accion', 'acción', 'siguiente paso'],
+    fecha_proximo_contacto: ['fecha_proximo_contacto', 'fecha', 'próxima fecha', 'fecha contacto'],
+    notas: ['notas', 'nota', 'comentarios', 'observaciones']
+  }
+
+  function normalizarHeader(h) {
+    return (h || '').toString().toLowerCase().trim()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+  }
+
+  function detectarCampo(header) {
+    const h = normalizarHeader(header)
+    for (const [campo, aliases] of Object.entries(CAMPO_ALIASES)) {
+      if (aliases.some(a => normalizarHeader(a) === h || h.includes(normalizarHeader(a)))) return campo
+    }
+    return null
+  }
+
+  function parsearBooleano(val) {
+    if (typeof val === 'boolean') return val
+    const s = (val || '').toString().toLowerCase().trim()
+    return s === 'si' || s === 'sí' || s === 'yes' || s === '1' || s === 'true'
+  }
+
+  function procesarExcel(file) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array' })
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' })
+        if (rows.length < 2) { alert('El archivo no tiene datos'); return }
+
+        const headers = rows[0]
+        const mapeo = headers.map(h => detectarCampo(h))
+
+        const clientes_import = rows.slice(1)
+          .filter(row => row.some(cell => cell !== ''))
+          .map(row => {
+            const obj = { ...clienteVacio }
+            headers.forEach((_, i) => {
+              const campo = mapeo[i]
+              if (!campo) return
+              const val = row[i]
+              if (campo === 'tiene_infonavit' || campo === 'tiene_terreno') {
+                obj[campo] = parsearBooleano(val)
+              } else if (campo === 'estatus') {
+                const s = (val || '').toString().toLowerCase().trim()
+                obj[campo] = ['nuevo', 'en seguimiento', 'cerrado', 'perdido'].includes(s) ? s : 'nuevo'
+              } else if (campo === 'probabilidad_cierre') {
+                const s = (val || '').toString().toLowerCase().trim()
+                obj[campo] = ['alta', 'media', 'baja'].includes(s) ? s : (val ? val.toString() : '')
+              } else {
+                obj[campo] = val !== undefined && val !== null ? val.toString().trim() : ''
+              }
+            })
+            if (usuario?.rol === 'asesor' && !obj.asesor) obj.asesor = usuario.nombre
+            return obj
+          })
+          .filter(c => c.nombre)
+
+        setImportPreview(clientes_import)
+        setImportResultado(null)
+      } catch {
+        alert('No se pudo leer el archivo. Asegúrate de que sea .xlsx o .csv')
+      }
+    }
+    reader.readAsArrayBuffer(file)
+  }
+
+  async function confirmarImportacion() {
+    if (importPreview.length === 0) return
+    setImportCargando(true)
+    const { error } = await supabase.from('clientes').insert(importPreview)
+    if (error) {
+      setImportResultado({ ok: false, msg: 'Error al importar: ' + error.message })
+    } else {
+      await cargarClientes()
+      setImportResultado({ ok: true, msg: `${importPreview.length} clientes importados correctamente` })
+      setImportPreview([])
+    }
+    setImportCargando(false)
   }
 
   async function guardarPerfil(e) {
@@ -610,6 +713,10 @@ export default function App() {
                 <button onClick={exportarCSV}
                   className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium">
                   ⬇ Exportar
+                </button>
+                <button onClick={() => { setImportModal(true); setImportPreview([]); setImportResultado(null) }}
+                  className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium">
+                  <Upload size={15} /> Importar
                 </button>
                 <button onClick={() => { setForm({ ...clienteVacio, asesor: usuario?.rol === 'asesor' ? usuario.nombre : '' }); setClienteEditando(null); setMostrarFormulario(true) }}
                   className="flex items-center gap-1.5 bg-brand-gold text-white px-3 py-2 rounded-lg hover:bg-yellow-700 text-sm font-medium">
@@ -1418,6 +1525,83 @@ export default function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL IMPORTAR EXCEL */}
+      {importModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-5 border-b">
+              <h2 className="text-lg font-bold text-gray-800">Importar clientes desde Excel</h2>
+              <button onClick={() => setImportModal(false)}><X size={20} className="text-gray-400" /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              {importResultado ? (
+                <div className={`rounded-xl p-4 text-sm font-medium ${importResultado.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                  {importResultado.msg}
+                  {importResultado.ok && (
+                    <button onClick={() => setImportModal(false)} className="ml-4 underline">Cerrar</button>
+                  )}
+                </div>
+              ) : importPreview.length === 0 ? (
+                <>
+                  <p className="text-sm text-gray-500">Sube un archivo <strong>.xlsx</strong> o <strong>.csv</strong>. El sistema detecta automáticamente las columnas: nombre, teléfono, correo, asesor, estatus, fuente, probabilidad, INFONAVIT, terreno, notas, etc.</p>
+                  <div
+                    onClick={() => importInputRef.current?.click()}
+                    className="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center cursor-pointer hover:border-brand-gold hover:bg-yellow-50 transition-colors">
+                    <Upload size={32} className="mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm font-medium text-gray-600">Haz clic para seleccionar archivo</p>
+                    <p className="text-xs text-gray-400 mt-1">.xlsx, .xls o .csv</p>
+                  </div>
+                  <input ref={importInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden"
+                    onChange={e => { if (e.target.files[0]) procesarExcel(e.target.files[0]); e.target.value = '' }} />
+                </>
+              ) : (
+                <>
+                  <div className="bg-blue-50 rounded-xl px-4 py-3 text-sm text-blue-700">
+                    Se detectaron <strong>{importPreview.length} clientes</strong>. Revisa la vista previa antes de importar.
+                  </div>
+                  <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          {['Nombre', 'Teléfono', 'Correo', 'Estatus', 'Asesor', 'Fuente'].map(h => (
+                            <th key={h} className="px-3 py-2 text-left font-semibold text-gray-600">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importPreview.slice(0, 5).map((c, i) => (
+                          <tr key={i} className="border-t border-gray-100">
+                            <td className="px-3 py-2 font-medium text-gray-800">{c.nombre || '—'}</td>
+                            <td className="px-3 py-2 text-gray-600">{c.telefono || '—'}</td>
+                            <td className="px-3 py-2 text-gray-600">{c.correo || '—'}</td>
+                            <td className="px-3 py-2 text-gray-600">{c.estatus || '—'}</td>
+                            <td className="px-3 py-2 text-gray-600">{c.asesor || '—'}</td>
+                            <td className="px-3 py-2 text-gray-600">{c.fuente || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {importPreview.length > 5 && (
+                      <p className="text-xs text-gray-400 px-3 py-2">...y {importPreview.length - 5} más</p>
+                    )}
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <button onClick={() => setImportPreview([])}
+                      className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50">
+                      Cambiar archivo
+                    </button>
+                    <button onClick={confirmarImportacion} disabled={importCargando}
+                      className="flex-1 bg-brand-gold text-white py-2.5 rounded-xl text-sm font-bold hover:bg-yellow-700 disabled:opacity-50">
+                      {importCargando ? 'Importando...' : `Importar ${importPreview.length} clientes`}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
