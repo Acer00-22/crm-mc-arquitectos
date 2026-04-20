@@ -18,6 +18,13 @@ const PROBABILIDAD_COLORES = {
   'baja': 'bg-red-100 text-red-800'
 }
 
+const COLUMNAS = [
+  { key: 'nuevo', label: 'Nuevo', color: 'border-blue-400', header: 'bg-blue-50' },
+  { key: 'en seguimiento', label: 'En Seguimiento', color: 'border-yellow-400', header: 'bg-yellow-50' },
+  { key: 'cerrado', label: 'Cerrado', color: 'border-green-400', header: 'bg-green-50' },
+  { key: 'perdido', label: 'Perdido', color: 'border-red-400', header: 'bg-red-50' },
+]
+
 const clienteVacio = {
   nombre: '', telefono: '', correo: '', tiene_infonavit: false, tiene_terreno: false,
   ubicacion_terreno: '', fuente: '', tipo_interes: '', probabilidad_cierre: '',
@@ -35,6 +42,7 @@ export default function App() {
   const [filtroEstatus, setFiltroEstatus] = useState('')
   const [filtroFuente, setFiltroFuente] = useState('')
   const [filtroProbabilidad, setFiltroProbabilidad] = useState('')
+  const [columnaActiva, setColumnaActiva] = useState('nuevo')
 
   useEffect(() => { cargarClientes() }, [])
 
@@ -61,6 +69,11 @@ export default function App() {
   async function eliminarCliente(id) {
     if (!window.confirm('¿Eliminar este cliente?')) return
     await supabase.from('clientes').delete().eq('id', id)
+    cargarClientes()
+  }
+
+  async function cambiarEstatus(id, nuevoEstatus) {
+    await supabase.from('clientes').update({ estatus: nuevoEstatus }).eq('id', id)
     cargarClientes()
   }
 
@@ -115,12 +128,16 @@ export default function App() {
           </div>
           <div className="flex gap-1">
             <button onClick={() => setVista('dashboard')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium ${vista === 'dashboard' ? 'bg-brand-gold text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium ${vista === 'dashboard' ? 'bg-brand-gold text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
               Dashboard
             </button>
             <button onClick={() => setVista('clientes')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium ${vista === 'clientes' ? 'bg-brand-gold text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium ${vista === 'clientes' ? 'bg-brand-gold text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
               Clientes
+            </button>
+            <button onClick={() => setVista('kanban')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium ${vista === 'kanban' ? 'bg-brand-gold text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
+              Pipeline
             </button>
           </div>
         </div>
@@ -198,7 +215,6 @@ export default function App() {
               </button>
             </div>
 
-            {/* Buscador y filtros */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
               <div className="relative">
                 <Search size={15} className="absolute left-3 top-2.5 text-gray-400" />
@@ -230,7 +246,6 @@ export default function App() {
               <div className="text-center py-20 text-gray-400">No hay clientes que coincidan</div>
             ) : (
               <>
-                {/* Vista móvil - tarjetas */}
                 <div className="md:hidden space-y-3">
                   {clientesFiltrados.map(c => (
                     <div key={c.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
@@ -254,7 +269,6 @@ export default function App() {
                   ))}
                 </div>
 
-                {/* Vista desktop - tabla */}
                 <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50 border-b border-gray-100">
@@ -297,6 +311,108 @@ export default function App() {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* KANBAN / PIPELINE */}
+        {vista === 'kanban' && (
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-gray-800">Pipeline</h2>
+              <button onClick={() => { setForm(clienteVacio); setClienteEditando(null); setMostrarFormulario(true) }}
+                className="flex items-center gap-1.5 bg-brand-gold text-white px-3 py-2 rounded-lg hover:bg-yellow-700 text-sm font-medium">
+                <Plus size={15} /> Nuevo
+              </button>
+            </div>
+
+            {/* Pestañas móvil */}
+            <div className="md:hidden flex gap-1 mb-4 bg-white rounded-xl p-1 shadow-sm border border-gray-100 overflow-x-auto">
+              {COLUMNAS.map(col => (
+                <button key={col.key} onClick={() => setColumnaActiva(col.key)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap ${columnaActiva === col.key ? 'bg-brand-gold text-white' : 'text-gray-500'}`}>
+                  {col.label} ({clientes.filter(c => c.estatus === col.key).length})
+                </button>
+              ))}
+            </div>
+
+            {/* Vista móvil - una columna a la vez */}
+            <div className="md:hidden space-y-3">
+              {clientes.filter(c => c.estatus === columnaActiva).map(c => (
+                <div key={c.id} className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-brand-gold">
+                  <div className="flex justify-between items-start mb-2">
+                    <p className="font-semibold text-gray-800 text-sm">{c.nombre}</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => editarCliente(c)} className="text-brand-gold"><Edit2 size={13} /></button>
+                      <button onClick={() => eliminarCliente(c.id)} className="text-red-400"><X size={13} /></button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-2">{c.telefono}</p>
+                  {c.probabilidad_cierre && (
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PROBABILIDAD_COLORES[c.probabilidad_cierre] || ''}`}>
+                      {c.probabilidad_cierre}
+                    </span>
+                  )}
+                  {c.proxima_accion && <p className="text-xs text-gray-400 mt-2">📋 {c.proxima_accion}</p>}
+                  <div className="mt-3 flex gap-1 flex-wrap">
+                    {COLUMNAS.filter(col => col.key !== c.estatus).map(col => (
+                      <button key={col.key} onClick={() => cambiarEstatus(c.id, col.key)}
+                        className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600">
+                        → {col.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {clientes.filter(c => c.estatus === columnaActiva).length === 0 && (
+                <div className="text-center py-10 text-gray-300 text-sm">Sin clientes aquí</div>
+              )}
+            </div>
+
+            {/* Vista desktop - 4 columnas */}
+            <div className="hidden md:grid grid-cols-4 gap-4">
+              {COLUMNAS.map(col => (
+                <div key={col.key} className={`rounded-xl border-t-4 ${col.color} bg-white shadow-sm`}>
+                  <div className={`px-4 py-3 ${col.header} rounded-t-xl flex justify-between items-center`}>
+                    <span className="text-sm font-semibold text-gray-700">{col.label}</span>
+                    <span className="bg-white text-gray-500 text-xs font-bold px-2 py-0.5 rounded-full">
+                      {clientes.filter(c => c.estatus === col.key).length}
+                    </span>
+                  </div>
+                  <div className="p-3 space-y-3 min-h-40">
+                    {clientes.filter(c => c.estatus === col.key).map(c => (
+                      <div key={c.id} className="bg-gray-50 rounded-lg p-3 border border-gray-100 hover:shadow-sm">
+                        <div className="flex justify-between items-start mb-1">
+                          <p className="font-semibold text-gray-800 text-sm leading-tight">{c.nombre}</p>
+                          <div className="flex gap-1 ml-1">
+                            <button onClick={() => editarCliente(c)} className="text-brand-gold hover:text-yellow-700"><Edit2 size={12} /></button>
+                            <button onClick={() => eliminarCliente(c.id)} className="text-red-400 hover:text-red-600"><X size={12} /></button>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-400 mb-2">{c.telefono}</p>
+                        {c.fuente && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{c.fuente}</span>}
+                        {c.probabilidad_cierre && (
+                          <span className={`ml-1 text-xs px-2 py-0.5 rounded-full font-medium ${PROBABILIDAD_COLORES[c.probabilidad_cierre] || ''}`}>
+                            {c.probabilidad_cierre}
+                          </span>
+                        )}
+                        {c.proxima_accion && <p className="text-xs text-gray-400 mt-2">📋 {c.proxima_accion}</p>}
+                        <div className="mt-2 flex gap-1 flex-wrap">
+                          {COLUMNAS.filter(dest => dest.key !== col.key).map(dest => (
+                            <button key={dest.key} onClick={() => cambiarEstatus(c.id, dest.key)}
+                              className="text-xs px-2 py-0.5 bg-white border border-gray-200 hover:bg-gray-100 rounded text-gray-500">
+                              → {dest.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {clientes.filter(c => c.estatus === col.key).length === 0 && (
+                      <div className="text-center py-6 text-gray-300 text-xs">Sin clientes</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
