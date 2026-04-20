@@ -41,6 +41,13 @@ const clienteVacio = {
 }
 
 export default function App() {
+  const [usuario, setUsuario] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('mc_usuario')) } catch { return null }
+  })
+  const [loginForm, setLoginForm] = useState({ nombre: '', password: '' })
+  const [loginError, setLoginError] = useState('')
+  const [loginCargando, setLoginCargando] = useState(false)
+
   const [vista, setVista] = useState('dashboard')
   const [clientes, setClientes] = useState([])
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
@@ -58,7 +65,33 @@ export default function App() {
   const [nuevaNota, setNuevaNota] = useState('')
   const [guardandoNota, setGuardandoNota] = useState(false)
 
+  async function iniciarSesion(e) {
+    e.preventDefault()
+    setLoginCargando(true)
+    setLoginError('')
+    const { data } = await supabase
+      .from('usuarios')
+      .select('*')
+      .ilike('nombre', loginForm.nombre.trim())
+      .eq('password', loginForm.password)
+      .single()
+    if (data) {
+      localStorage.setItem('mc_usuario', JSON.stringify(data))
+      setUsuario(data)
+    } else {
+      setLoginError('Usuario o contraseña incorrectos')
+    }
+    setLoginCargando(false)
+  }
+
+  function cerrarSesion() {
+    localStorage.removeItem('mc_usuario')
+    setUsuario(null)
+    setLoginForm({ nombre: '', password: '' })
+  }
+
   useEffect(() => {
+    if (!usuario) return
     cargarClientes()
     const canal = supabase
       .channel('clientes-cambios')
@@ -67,7 +100,7 @@ export default function App() {
       })
       .subscribe()
     return () => supabase.removeChannel(canal)
-  }, [])
+  }, [usuario])
 
   async function cargarClientes() {
     setCargando(true)
@@ -135,12 +168,16 @@ export default function App() {
     if (clienteDetalle) await cargarActividades(clienteDetalle.id)
   }
 
-  const vencidos = clientes.filter(c => {
+  const clientesVisibles = usuario?.rol === 'asesor'
+    ? clientes.filter(c => c.asesor?.toLowerCase() === usuario.nombre.toLowerCase())
+    : clientes
+
+  const vencidos = clientesVisibles.filter(c => {
     if (!c.fecha_proximo_contacto) return false
     return new Date(c.fecha_proximo_contacto) < new Date() && c.estatus !== 'cerrado' && c.estatus !== 'perdido'
   })
 
-  const clientesFiltrados = clientes.filter(c => {
+  const clientesFiltrados = clientesVisibles.filter(c => {
     const texto = busqueda.toLowerCase()
     const coincideTexto = !busqueda ||
       c.nombre?.toLowerCase().includes(texto) ||
@@ -153,22 +190,67 @@ export default function App() {
   })
 
   const porEstatus = ['nuevo', 'en seguimiento', 'cerrado', 'perdido'].map(e => ({
-    name: e, value: clientes.filter(c => c.estatus === e).length
+    name: e, value: clientesVisibles.filter(c => c.estatus === e).length
   })).filter(e => e.value > 0)
 
-  const porFuente = [...new Set(clientes.map(c => c.fuente).filter(Boolean))].map(f => ({
-    name: f, value: clientes.filter(c => c.fuente === f).length
+  const porFuente = [...new Set(clientesVisibles.map(c => c.fuente).filter(Boolean))].map(f => ({
+    name: f, value: clientesVisibles.filter(c => c.fuente === f).length
   }))
 
   const porMes = () => {
     const meses = {}
-    clientes.forEach(c => {
+    clientesVisibles.forEach(c => {
       if (c.fecha_llegada) {
         const mes = c.fecha_llegada.slice(0, 7)
         meses[mes] = (meses[mes] || 0) + 1
       }
     })
     return Object.entries(meses).map(([mes, total]) => ({ mes, total })).slice(-6)
+  }
+
+  if (!usuario) {
+    return (
+      <div className="min-h-screen bg-brand-dark flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-8">
+          <div className="flex flex-col items-center mb-6">
+            <img src="/logo.jpeg" alt="MC Arquitectos" className="w-16 h-16 rounded-full object-cover border-2 border-brand-gold mb-3" />
+            <h1 className="text-xl font-bold text-gray-800">MC Arquitectos</h1>
+            <p className="text-sm text-gray-400">CRM — Inicia sesión</p>
+          </div>
+          <form onSubmit={iniciarSesion} className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
+              <input
+                type="text"
+                value={loginForm.nombre}
+                onChange={e => setLoginForm({ ...loginForm, nombre: e.target.value })}
+                placeholder="Ej: Carlos"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Contraseña</label>
+              <input
+                type="password"
+                value={loginForm.password}
+                onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
+                placeholder="••••••••"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                required
+              />
+            </div>
+            {loginError && <p className="text-xs text-red-500 text-center">{loginError}</p>}
+            <button
+              type="submit"
+              disabled={loginCargando}
+              className="w-full bg-brand-gold text-white py-2.5 rounded-lg font-medium text-sm hover:bg-yellow-700 disabled:opacity-50">
+              {loginCargando ? 'Entrando...' : 'Entrar'}
+            </button>
+          </form>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -180,7 +262,7 @@ export default function App() {
             <img src="/logo.jpeg" alt="MC Arquitectos" className="w-9 h-9 rounded-full object-cover border-2 border-brand-gold" />
             <div>
               <h1 className="text-sm font-bold leading-tight text-brand-gold">MC Arquitectos</h1>
-              <p className="text-gray-300 text-xs">{clientes.length} clientes</p>
+              <p className="text-gray-300 text-xs">{clientesVisibles.length} clientes</p>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -204,6 +286,15 @@ export default function App() {
                 </span>
               )}
             </button>
+            <div className="ml-2 flex items-center gap-1.5 border-l border-gray-600 pl-2">
+              <span className="text-xs text-gray-300 hidden sm:block">{usuario.nombre}</span>
+              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${usuario.rol === 'dueño' ? 'bg-brand-gold text-white' : 'bg-gray-600 text-gray-200'}`}>
+                {usuario.rol}
+              </span>
+              <button onClick={cerrarSesion} className="text-gray-400 hover:text-white text-xs ml-1 px-2 py-1 rounded hover:bg-gray-700">
+                Salir
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -260,10 +351,10 @@ export default function App() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
               {[
-                { label: 'Total Leads', value: clientes.length },
-                { label: 'Nuevos', value: clientes.filter(c => c.estatus === 'nuevo').length },
-                { label: 'Seguimiento', value: clientes.filter(c => c.estatus === 'en seguimiento').length },
-                { label: 'Cerrados', value: clientes.filter(c => c.estatus === 'cerrado').length },
+                { label: 'Total Leads', value: clientesVisibles.length },
+                { label: 'Nuevos', value: clientesVisibles.filter(c => c.estatus === 'nuevo').length },
+                { label: 'Seguimiento', value: clientesVisibles.filter(c => c.estatus === 'en seguimiento').length },
+                { label: 'Cerrados', value: clientesVisibles.filter(c => c.estatus === 'cerrado').length },
               ].map((t, i) => (
                 <div key={i} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                   <p className="text-gray-500 text-xs">{t.label}</p>
@@ -319,7 +410,7 @@ export default function App() {
           <div>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold text-gray-800">Clientes</h2>
-              <button onClick={() => { setForm(clienteVacio); setClienteEditando(null); setMostrarFormulario(true) }}
+              <button onClick={() => { setForm({ ...clienteVacio, asesor: usuario?.rol === 'asesor' ? usuario.nombre : '' }); setClienteEditando(null); setMostrarFormulario(true) }}
                 className="flex items-center gap-1.5 bg-brand-gold text-white px-3 py-2 rounded-lg hover:bg-yellow-700 text-sm font-medium">
                 <Plus size={15} /> Nuevo
               </button>
@@ -505,7 +596,7 @@ export default function App() {
           <div>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold text-gray-800">Pipeline</h2>
-              <button onClick={() => { setForm(clienteVacio); setClienteEditando(null); setMostrarFormulario(true) }}
+              <button onClick={() => { setForm({ ...clienteVacio, asesor: usuario?.rol === 'asesor' ? usuario.nombre : '' }); setClienteEditando(null); setMostrarFormulario(true) }}
                 className="flex items-center gap-1.5 bg-brand-gold text-white px-3 py-2 rounded-lg hover:bg-yellow-700 text-sm font-medium">
                 <Plus size={15} /> Nuevo
               </button>
@@ -516,14 +607,14 @@ export default function App() {
               {COLUMNAS.map(col => (
                 <button key={col.key} onClick={() => setColumnaActiva(col.key)}
                   className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap ${columnaActiva === col.key ? 'bg-brand-gold text-white' : 'text-gray-500'}`}>
-                  {col.label} ({clientes.filter(c => c.estatus === col.key).length})
+                  {col.label} ({clientesVisibles.filter(c => c.estatus === col.key).length})
                 </button>
               ))}
             </div>
 
             {/* Vista móvil - una columna a la vez */}
             <div className="md:hidden space-y-3">
-              {clientes.filter(c => c.estatus === columnaActiva).map(c => (
+              {clientesVisibles.filter(c => c.estatus === columnaActiva).map(c => (
                 <div key={c.id} className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-brand-gold">
                   <div className="flex justify-between items-start mb-2">
                     <button onClick={() => abrirDetalle(c)} className="font-semibold text-gray-800 text-sm hover:text-brand-gold text-left">{c.nombre}</button>
@@ -550,7 +641,7 @@ export default function App() {
                   </div>
                 </div>
               ))}
-              {clientes.filter(c => c.estatus === columnaActiva).length === 0 && (
+              {clientesVisibles.filter(c => c.estatus === columnaActiva).length === 0 && (
                 <div className="text-center py-10 text-gray-300 text-sm">Sin clientes aquí</div>
               )}
             </div>
@@ -562,11 +653,11 @@ export default function App() {
                   <div className={`px-4 py-3 ${col.header} rounded-t-xl flex justify-between items-center`}>
                     <span className="text-sm font-semibold text-gray-700">{col.label}</span>
                     <span className="bg-white text-gray-500 text-xs font-bold px-2 py-0.5 rounded-full">
-                      {clientes.filter(c => c.estatus === col.key).length}
+                      {clientesVisibles.filter(c => c.estatus === col.key).length}
                     </span>
                   </div>
                   <div className="p-3 space-y-3 min-h-40">
-                    {clientes.filter(c => c.estatus === col.key).map(c => (
+                    {clientesVisibles.filter(c => c.estatus === col.key).map(c => (
                       <div key={c.id} className="bg-gray-50 rounded-lg p-3 border border-gray-100 hover:shadow-sm">
                         <div className="flex justify-between items-start mb-1">
                           <button onClick={() => abrirDetalle(c)} className="font-semibold text-gray-800 text-sm leading-tight hover:text-brand-gold text-left">{c.nombre}</button>
@@ -594,7 +685,7 @@ export default function App() {
                         </div>
                       </div>
                     ))}
-                    {clientes.filter(c => c.estatus === col.key).length === 0 && (
+                    {clientesVisibles.filter(c => c.estatus === col.key).length === 0 && (
                       <div className="text-center py-6 text-gray-300 text-xs">Sin clientes</div>
                     )}
                   </div>
