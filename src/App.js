@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './config/supabase'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
-import { Plus, X, Edit2, Save, Search } from 'lucide-react'
+import { Plus, X, Edit2, Save, Search, Bell } from 'lucide-react'
 
 const COLORES = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
@@ -48,6 +48,7 @@ export default function App() {
   const [form, setForm] = useState(clienteVacio)
   const [cargando, setCargando] = useState(true)
   const [busqueda, setBusqueda] = useState('')
+  const [mostrarAlertas, setMostrarAlertas] = useState(false)
   const [filtroEstatus, setFiltroEstatus] = useState('')
   const [filtroFuente, setFiltroFuente] = useState('')
   const [filtroProbabilidad, setFiltroProbabilidad] = useState('')
@@ -101,6 +102,11 @@ export default function App() {
     setMostrarFormulario(true)
   }
 
+  const vencidos = clientes.filter(c => {
+    if (!c.fecha_proximo_contacto) return false
+    return new Date(c.fecha_proximo_contacto) < new Date() && c.estatus !== 'cerrado' && c.estatus !== 'perdido'
+  })
+
   const clientesFiltrados = clientes.filter(c => {
     const texto = busqueda.toLowerCase()
     const coincideTexto = !busqueda ||
@@ -144,7 +150,7 @@ export default function App() {
               <p className="text-gray-300 text-xs">{clientes.length} clientes</p>
             </div>
           </div>
-          <div className="flex gap-1">
+          <div className="flex items-center gap-1">
             <button onClick={() => setVista('dashboard')}
               className={`px-2.5 py-1.5 rounded-lg text-xs font-medium ${vista === 'dashboard' ? 'bg-brand-gold text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
               Dashboard
@@ -157,15 +163,68 @@ export default function App() {
               className={`px-2.5 py-1.5 rounded-lg text-xs font-medium ${vista === 'kanban' ? 'bg-brand-gold text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
               Pipeline
             </button>
+            <button onClick={() => setMostrarAlertas(v => !v)} className="relative ml-1 p-1.5 rounded-lg hover:bg-gray-700">
+              <Bell size={16} className="text-gray-300" />
+              {vencidos.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                  {vencidos.length}
+                </span>
+              )}
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Panel de alertas */}
+      {mostrarAlertas && (
+        <div className="bg-red-50 border-b border-red-100 px-4 py-3">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-sm font-bold text-red-700">🔔 Seguimientos vencidos ({vencidos.length})</h3>
+              <button onClick={() => setMostrarAlertas(false)} className="text-red-400"><X size={16} /></button>
+            </div>
+            {vencidos.length === 0 ? (
+              <p className="text-sm text-green-600">✅ Todo al día, sin seguimientos vencidos</p>
+            ) : (
+              <div className="space-y-1">
+                {vencidos.map(c => (
+                  <div key={c.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-red-100">
+                    <div>
+                      <span className="text-sm font-medium text-gray-800">{c.nombre}</span>
+                      <span className="text-xs text-red-500 ml-2">Vencido: {c.fecha_proximo_contacto}</span>
+                    </div>
+                    <button onClick={() => editarCliente(c)} className="text-brand-gold text-xs">Actualizar</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 py-6">
 
         {/* DASHBOARD */}
         {vista === 'dashboard' && (
           <div>
+            {vencidos.length > 0 && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+                <h3 className="text-sm font-bold text-red-700 mb-3">🔔 Seguimientos vencidos — {vencidos.length} cliente(s)</h3>
+                <div className="space-y-2">
+                  {vencidos.map(c => (
+                    <div key={c.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-red-100">
+                      <div>
+                        <span className="text-sm font-medium text-gray-800">{c.nombre}</span>
+                        <span className="text-xs text-red-500 ml-2">📅 {c.fecha_proximo_contacto}</span>
+                        {c.proxima_accion && <span className="text-xs text-gray-400 ml-2">— {c.proxima_accion}</span>}
+                      </div>
+                      <button onClick={() => editarCliente(c)} className="text-xs bg-brand-gold text-white px-2 py-1 rounded-lg">Actualizar</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
               {[
                 { label: 'Total Leads', value: clientes.length },
