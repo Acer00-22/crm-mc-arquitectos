@@ -79,6 +79,11 @@ export default function App() {
   const [mostrarFormTarea, setMostrarFormTarea] = useState(false)
   const [formCita, setFormCita] = useState({ titulo: '', fecha: '', hora: '', asesor: '', notas: '', cliente_id: '' })
   const [formTarea, setFormTarea] = useState({ titulo: '', descripcion: '', prioridad: 'media', fecha_limite: '', asesor: '' })
+  const [campanas, setCampanas] = useState([])
+  const [campanaDetalle, setCampanaDetalle] = useState(null)
+  const [campanaClientes, setCampanaClientes] = useState([])
+  const [mostrarFormCampana, setMostrarFormCampana] = useState(false)
+  const [formCampana, setFormCampana] = useState({ nombre: '', descripcion: '', filtro_estatus: '', filtro_fuente: '' })
 
   async function iniciarSesion(e) {
     e.preventDefault()
@@ -110,6 +115,7 @@ export default function App() {
     cargarClientes()
     cargarCitas()
     cargarTareas()
+    cargarCampanas()
     const canal = supabase
       .channel('clientes-cambios')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, () => cargarClientes())
@@ -158,6 +164,57 @@ export default function App() {
   async function eliminarTarea(id) {
     await supabase.from('tareas').delete().eq('id', id)
     cargarTareas()
+  }
+
+  async function cargarCampanas() {
+    const { data } = await supabase.from('campanas').select('*').order('created_at', { ascending: false })
+    setCampanas(data || [])
+  }
+
+  async function crearCampana(e) {
+    e.preventDefault()
+    const { data: nueva } = await supabase.from('campanas').insert([formCampana]).select().single()
+    if (nueva) {
+      const clientesFiltro = clientes.filter(c => {
+        const okEstatus = !formCampana.filtro_estatus || c.estatus === formCampana.filtro_estatus
+        const okFuente = !formCampana.filtro_fuente || c.fuente === formCampana.filtro_fuente
+        return okEstatus && okFuente
+      })
+      if (clientesFiltro.length > 0) {
+        await supabase.from('campana_clientes').insert(
+          clientesFiltro.map(c => ({ campana_id: nueva.id, cliente_id: c.id }))
+        )
+      }
+    }
+    setMostrarFormCampana(false)
+    setFormCampana({ nombre: '', descripcion: '', filtro_estatus: '', filtro_fuente: '' })
+    cargarCampanas()
+  }
+
+  async function abrirCampana(campana) {
+    setCampanaDetalle(campana)
+    setVista('campana')
+    const { data } = await supabase
+      .from('campana_clientes')
+      .select('*, clientes(nombre, telefono, estatus, fuente, asesor)')
+      .eq('campana_id', campana.id)
+    setCampanaClientes(data || [])
+  }
+
+  async function actualizarResultado(id, resultado) {
+    await supabase.from('campana_clientes').update({ resultado }).eq('id', id)
+    setCampanaClientes(prev => prev.map(c => c.id === id ? { ...c, resultado } : c))
+  }
+
+  async function eliminarCampana(id) {
+    if (!window.confirm('¿Eliminar esta campaña?')) return
+    await supabase.from('campanas').delete().eq('id', id)
+    cargarCampanas()
+  }
+
+  async function cambiarEstatusCampana(id, estatus) {
+    await supabase.from('campanas').update({ estatus }).eq('id', id)
+    cargarCampanas()
   }
 
   async function cargarClientes() {
@@ -408,6 +465,10 @@ export default function App() {
             <button onClick={() => setVista('agenda')}
               className={`px-2.5 py-1.5 rounded-lg text-xs font-medium ${vista === 'agenda' ? 'bg-brand-gold text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
               Agenda
+            </button>
+            <button onClick={() => setVista('campanas')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium ${vista === 'campanas' || vista === 'campana' ? 'bg-brand-gold text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
+              Campañas
             </button>
             <button onClick={() => setMostrarAlertas(v => !v)} className="relative ml-1 p-1.5 rounded-lg hover:bg-gray-700">
               <Bell size={16} className="text-gray-300" />
@@ -900,6 +961,148 @@ export default function App() {
           )
         })()}
 
+        {/* CAMPAÑAS - LISTA */}
+        {vista === 'campanas' && (
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-gray-800">Campañas</h2>
+              <button onClick={() => setMostrarFormCampana(true)}
+                className="flex items-center gap-1.5 bg-brand-gold text-white px-3 py-2 rounded-lg hover:bg-yellow-700 text-sm font-medium">
+                <Plus size={15} /> Nueva campaña
+              </button>
+            </div>
+
+            {campanas.length === 0 ? (
+              <div className="text-center py-20 text-gray-400">
+                <p className="text-4xl mb-3">📢</p>
+                <p className="text-sm">No hay campañas todavía</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {campanas.map(c => {
+                  const ESTATUS_CAM = { activa: 'bg-green-100 text-green-700', pausada: 'bg-yellow-100 text-yellow-700', terminada: 'bg-gray-100 text-gray-500' }
+                  return (
+                    <div key={c.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <button onClick={() => abrirCampana(c)} className="font-semibold text-gray-800 hover:text-brand-gold text-left">{c.nombre}</button>
+                          {c.descripcion && <p className="text-xs text-gray-400 mt-0.5">{c.descripcion}</p>}
+                        </div>
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${ESTATUS_CAM[c.estatus]}`}>{c.estatus}</span>
+                      </div>
+                      <div className="flex gap-1 flex-wrap mt-2 mb-3">
+                        {c.filtro_estatus && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Estatus: {c.filtro_estatus}</span>}
+                        {c.filtro_fuente && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Fuente: {c.filtro_fuente}</span>}
+                        <span className="text-xs text-gray-400">{new Date(c.created_at).toLocaleDateString('es-MX')}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => abrirCampana(c)} className="flex-1 text-xs bg-brand-gold text-white px-3 py-1.5 rounded-lg hover:bg-yellow-700">Ver clientes</button>
+                        {c.estatus === 'activa' && <button onClick={() => cambiarEstatusCampana(c.id, 'pausada')} className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-200">Pausar</button>}
+                        {c.estatus === 'pausada' && <button onClick={() => cambiarEstatusCampana(c.id, 'activa')} className="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-200">Reactivar</button>}
+                        {c.estatus !== 'terminada' && <button onClick={() => cambiarEstatusCampana(c.id, 'terminada')} className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-200">Terminar</button>}
+                        <button onClick={() => eliminarCampana(c.id)} className="text-red-400 hover:text-red-600 px-2"><X size={14} /></button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* CAMPAÑA - DETALLE */}
+        {vista === 'campana' && campanaDetalle && (
+          <div>
+            <button onClick={() => setVista('campanas')} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4">
+              <ArrowLeft size={16} /> Volver a Campañas
+            </button>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800">{campanaDetalle.nombre}</h2>
+                  {campanaDetalle.descripcion && <p className="text-sm text-gray-500 mt-1">{campanaDetalle.descripcion}</p>}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                {[
+                  { label: 'Total', value: campanaClientes.length, color: 'text-gray-800' },
+                  { label: 'Pendientes', value: campanaClientes.filter(c => c.resultado === 'pendiente').length, color: 'text-gray-500' },
+                  { label: 'Contactados', value: campanaClientes.filter(c => c.resultado === 'contactado').length, color: 'text-blue-600' },
+                  { label: 'Interesados', value: campanaClientes.filter(c => c.resultado === 'interesado').length, color: 'text-green-600' },
+                ].map(m => (
+                  <div key={m.label} className="bg-gray-50 rounded-lg p-3 text-center">
+                    <p className={`text-2xl font-bold ${m.color}`}>{m.value}</p>
+                    <p className="text-xs text-gray-400">{m.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {campanaClientes.length === 0 ? (
+              <div className="text-center py-10 text-gray-400 text-sm">No hay clientes en esta campaña</div>
+            ) : (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="hidden md:block">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 border-b border-gray-100">
+                      <tr>
+                        {['Cliente', 'Teléfono', 'Fuente', 'Asesor', 'Resultado'].map(h => (
+                          <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {campanaClientes.map(cc => {
+                        const RESULTADO_COLORES = { pendiente: 'bg-gray-100 text-gray-600', contactado: 'bg-blue-100 text-blue-700', interesado: 'bg-green-100 text-green-700', 'no interesado': 'bg-red-100 text-red-600' }
+                        return (
+                          <tr key={cc.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 font-medium text-gray-800">{cc.clientes?.nombre}</td>
+                            <td className="px-4 py-3 text-gray-500">{cc.clientes?.telefono}</td>
+                            <td className="px-4 py-3 text-gray-500">{cc.clientes?.fuente}</td>
+                            <td className="px-4 py-3 text-gray-500">{cc.clientes?.asesor}</td>
+                            <td className="px-4 py-3">
+                              <select value={cc.resultado} onChange={e => actualizarResultado(cc.id, e.target.value)}
+                                className={`text-xs px-2 py-1 rounded-full font-medium border-0 cursor-pointer ${RESULTADO_COLORES[cc.resultado]}`}>
+                                <option value="pendiente">Pendiente</option>
+                                <option value="contactado">Contactado</option>
+                                <option value="interesado">Interesado</option>
+                                <option value="no interesado">No interesado</option>
+                              </select>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="md:hidden divide-y divide-gray-100">
+                  {campanaClientes.map(cc => {
+                    const RESULTADO_COLORES = { pendiente: 'bg-gray-100 text-gray-600', contactado: 'bg-blue-100 text-blue-700', interesado: 'bg-green-100 text-green-700', 'no interesado': 'bg-red-100 text-red-600' }
+                    return (
+                      <div key={cc.id} className="p-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-medium text-gray-800">{cc.clientes?.nombre}</p>
+                            <p className="text-xs text-gray-400">{cc.clientes?.telefono} · {cc.clientes?.asesor}</p>
+                          </div>
+                          <select value={cc.resultado} onChange={e => actualizarResultado(cc.id, e.target.value)}
+                            className={`text-xs px-2 py-1 rounded-full font-medium border-0 cursor-pointer ${RESULTADO_COLORES[cc.resultado]}`}>
+                            <option value="pendiente">Pendiente</option>
+                            <option value="contactado">Contactado</option>
+                            <option value="interesado">Interesado</option>
+                            <option value="no interesado">No interesado</option>
+                          </select>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* KANBAN / PIPELINE */}
         {vista === 'kanban' && (
           <div>
@@ -1004,6 +1207,67 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {/* MODAL NUEVA CAMPAÑA */}
+      {mostrarFormCampana && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-end md:items-center justify-center z-50">
+          <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-md p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-base font-bold text-gray-800">Nueva campaña</h3>
+              <button onClick={() => setMostrarFormCampana(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+            <form onSubmit={crearCampana} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Nombre *</label>
+                <input type="text" required value={formCampana.nombre} onChange={e => setFormCampana({ ...formCampana, nombre: e.target.value })}
+                  placeholder="Ej: Seguimiento leads Facebook abril"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Descripción</label>
+                <textarea rows={2} value={formCampana.descripcion} onChange={e => setFormCampana({ ...formCampana, descripcion: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300 resize-none" />
+              </div>
+              <div className="border-t pt-3">
+                <p className="text-xs text-gray-400 mb-2">Agregar clientes automáticamente por filtro (opcional)</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Estatus</label>
+                    <select value={formCampana.filtro_estatus} onChange={e => setFormCampana({ ...formCampana, filtro_estatus: e.target.value })}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                      <option value="">Todos</option>
+                      {['nuevo', 'en seguimiento', 'cerrado', 'perdido'].map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Fuente</label>
+                    <select value={formCampana.filtro_fuente} onChange={e => setFormCampana({ ...formCampana, filtro_fuente: e.target.value })}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                      <option value="">Todas</option>
+                      {['Facebook', 'WhatsApp', 'Instagram', 'Recomendación', 'Otro'].map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                </div>
+                {(formCampana.filtro_estatus || formCampana.filtro_fuente) && (
+                  <p className="text-xs text-brand-gold mt-2">
+                    Se agregarán {clientes.filter(c => {
+                      const okE = !formCampana.filtro_estatus || c.estatus === formCampana.filtro_estatus
+                      const okF = !formCampana.filtro_fuente || c.fuente === formCampana.filtro_fuente
+                      return okE && okF
+                    }).length} clientes automáticamente
+                  </p>
+                )}
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setMostrarFormCampana(false)} className="text-sm text-gray-500">Cancelar</button>
+                <button type="submit" className="flex items-center gap-2 bg-brand-gold text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-yellow-700">
+                  <Save size={14} /> Crear campaña
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* MODAL NUEVA CITA */}
       {mostrarFormCita && (
