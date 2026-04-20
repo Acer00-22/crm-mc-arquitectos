@@ -604,8 +604,19 @@ export default function App() {
                   {clienteDetalle.fecha_proximo_contacto && <p className="text-xs text-gray-400 mt-1">📅 Próximo contacto: {clienteDetalle.fecha_proximo_contacto}</p>}
                   {clienteDetalle.notas && <p className="text-sm text-gray-500 mt-2 italic">"{clienteDetalle.notas}"</p>}
                 </div>
-                <button onClick={() => editarCliente(clienteDetalle)}
-                  className="text-brand-gold hover:text-yellow-700 ml-4"><Edit2 size={18} /></button>
+                <div className="flex flex-col gap-2 ml-4">
+                  {clienteDetalle.telefono && (
+                    <a
+                      href={`https://wa.me/52${clienteDetalle.telefono.replace(/\D/g, '').slice(-10)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-1.5 rounded-lg font-medium">
+                      💬 WhatsApp
+                    </a>
+                  )}
+                  <button onClick={() => editarCliente(clienteDetalle)}
+                    className="text-brand-gold hover:text-yellow-700"><Edit2 size={18} /></button>
+                </div>
               </div>
             </div>
 
