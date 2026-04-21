@@ -1895,12 +1895,12 @@ export default function App() {
       {/* MODAL FORMULARIO */}
       {mostrarFormulario && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-end md:items-center justify-center z-50">
-          <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-4 border-b sticky top-0 bg-white">
+          <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-2xl flex flex-col h-full md:h-auto md:max-h-[90vh]">
+            <div className="flex justify-between items-center p-4 border-b flex-shrink-0">
               <h3 className="text-base font-bold text-gray-800">{clienteEditando ? 'Editar cliente' : 'Nuevo cliente'}</h3>
               <button onClick={() => setMostrarFormulario(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
             </div>
-            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto flex-1">
               {[
                 { label: 'Nombre *', key: 'nombre', type: 'text' },
                 { label: 'Teléfono', key: 'telefono', type: 'text' },
@@ -1953,7 +1953,7 @@ export default function App() {
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300" />
               </div>
             </div>
-            <div className="flex justify-end gap-3 p-4 border-t sticky bottom-0 bg-white">
+            <div className="flex justify-end gap-3 p-4 border-t flex-shrink-0 bg-white">
               <button onClick={() => setMostrarFormulario(false)}
                 className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
               <button onClick={guardarCliente}
