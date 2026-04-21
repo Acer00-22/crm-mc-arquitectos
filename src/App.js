@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from './config/supabase'
 import { Plus, X, Edit2, Save, Search, Bell, ArrowLeft, Clock, Eye, EyeOff, Upload } from 'lucide-react'
 import * as XLSX from 'xlsx'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 const ESTATUS_COLORES = {
   'nuevo': 'bg-blue-100 text-blue-800',
@@ -642,6 +643,50 @@ export default function App() {
                 </div>
               ))}
             </div>
+
+            {/* GRÁFICA TIPO DE INTERÉS */}
+            {(() => {
+              const potenciales = clientesVisibles.filter(c => ['Construcción nueva', 'Cliente potencial calificado'].includes(c.tipo_interes)).length
+              const noSirven = clientesVisibles.filter(c => ['Remodelación', 'Venta de casa', 'Solo informándose'].includes(c.tipo_interes)).length
+              const sinDato = clientesVisibles.filter(c => !c.tipo_interes).length
+              const data = [
+                { name: 'Clientes potenciales', value: potenciales, color: '#10b981' },
+                { name: 'No nos sirven', value: noSirven, color: '#ef4444' },
+                ...(sinDato > 0 ? [{ name: 'Sin clasificar', value: sinDato, color: '#d1d5db' }] : [])
+              ].filter(d => d.value > 0)
+              return (
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-4">
+                  <h3 className="font-semibold text-gray-700 mb-1 text-sm">Clasificación de clientes</h3>
+                  <p className="text-xs text-gray-400 mb-3">Basado en tipo de interés</p>
+                  {data.length === 0 ? (
+                    <p className="text-center text-gray-300 text-sm py-10">Sin datos todavía</p>
+                  ) : (
+                    <div className="flex flex-col md:flex-row items-center gap-4">
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                          <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} innerRadius={45}>
+                            {data.map((d, i) => <Cell key={i} fill={d.color} />)}
+                          </Pie>
+                          <Tooltip formatter={(value, name) => [value + ' clientes', name]} />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="flex flex-row md:flex-col gap-4 md:gap-3 flex-shrink-0">
+                        {data.map((d, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }}></span>
+                            <div>
+                              <p className="text-xs font-medium text-gray-700">{d.name}</p>
+                              <p className="text-lg font-bold text-gray-800">{d.value}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* CARDS ESTILO SALESFORCE */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
