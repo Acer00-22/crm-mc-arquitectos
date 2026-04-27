@@ -422,16 +422,63 @@ export default function App() {
   }
 
   const MESES_ES = { enero:1, febrero:2, marzo:3, abril:4, mayo:5, junio:6, julio:7, agosto:8, septiembre:9, octubre:10, noviembre:11, diciembre:12 }
-  function parsearFechaEspanol(val) {
-    if (!val) return null
-    const s = val.toString().trim()
-    const match = s.match(/(\d{1,2})\s+de\s+(\w+)\s+(?:de\s+)?(\d{4})/i)
-    if (match) {
-      const dia = match[1].padStart(2, '0')
-      const mes = MESES_ES[match[2].toLowerCase()]
-      if (mes) return `${match[3]}-${String(mes).padStart(2, '0')}-${dia}`
+  const MESES_EN = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12, january:1, february:2, march:3, april:4, june:6, july:7, august:8, september:9, october:10, november:11, december:12 }
+
+  function parsearFecha(val) {
+    if (!val && val !== 0) return null
+    // Número serial de Excel (ej. 46130)
+    if (typeof val === 'number' && val > 1000 && val < 100000) {
+      const d = new Date(Math.round((val - 25569) * 86400 * 1000))
+      if (!isNaN(d)) return d.toISOString().slice(0, 10)
     }
+    const s = val.toString().trim()
+    if (!s || s.toLowerCase() === 'n/a' || s === '-') return null
+    // YYYY-MM-DD (ISO)
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+    // YYYY/MM/DD
+    let m = s.match(/^(\d{4})\/(\d{2})\/(\d{2})$/)
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`
+    // DD/MM/YYYY o DD-MM-YYYY o DD.MM.YYYY
+    m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/)
+    if (m) {
+      const [, a, b, anio] = m
+      const dia = a.padStart(2, '0'), mes = b.padStart(2, '0')
+      if (parseInt(mes) <= 12) return `${anio}-${mes}-${dia}`
+    }
+    // MM/DD/YYYY (formato americano)
+    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/)
+    if (m) {
+      const anio = m[3].length === 2 ? '20' + m[3] : m[3]
+      const mes = m[1].padStart(2, '0'), dia = m[2].padStart(2, '0')
+      if (parseInt(mes) <= 12 && parseInt(dia) <= 31) return `${anio}-${mes}-${dia}`
+    }
+    // "19 de abril de 2026" o "19 de abril 2026"
+    m = s.match(/(\d{1,2})\s+de\s+(\w+)\s+(?:de\s+)?(\d{4})/i)
+    if (m) {
+      const mes = MESES_ES[m[2].toLowerCase()]
+      if (mes) return `${m[3]}-${String(mes).padStart(2, '0')}-${m[1].padStart(2, '0')}`
+    }
+    // "abril 19, 2026" o "abril 19 2026"
+    m = s.match(/^(\w+)\s+(\d{1,2})[,\s]+(\d{4})$/i)
+    if (m) {
+      const mes = MESES_ES[m[1].toLowerCase()] || MESES_EN[m[1].toLowerCase().slice(0,3)]
+      if (mes) return `${m[3]}-${String(mes).padStart(2, '0')}-${m[2].padStart(2, '0')}`
+    }
+    // "19 Apr 2026" o "Apr 19 2026"
+    m = s.match(/^(\d{1,2})\s+(\w{3,})\s+(\d{4})$/i)
+    if (m) {
+      const mes = MESES_ES[m[2].toLowerCase()] || MESES_EN[m[2].toLowerCase().slice(0,3)]
+      if (mes) return `${m[3]}-${String(mes).padStart(2, '0')}-${m[1].padStart(2, '0')}`
+    }
+    // "Apr 19, 2026"
+    m = s.match(/^(\w{3,})\s+(\d{1,2}),?\s+(\d{4})$/i)
+    if (m) {
+      const mes = MESES_ES[m[1].toLowerCase()] || MESES_EN[m[1].toLowerCase().slice(0,3)]
+      if (mes) return `${m[3]}-${String(mes).padStart(2, '0')}-${m[2].padStart(2, '0')}`
+    }
+    // YYYYMMDD compacto
+    m = s.match(/^(\d{4})(\d{2})(\d{2})$/)
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`
     return null
   }
 
@@ -514,7 +561,7 @@ export default function App() {
               } else if (campo === 'telefono') {
                 obj[campo] = normalizarTelefono52(val)
               } else if (campo === 'fecha_proximo_contacto' || campo === 'proxima_accion') {
-                obj[campo] = parsearFechaEspanol(val) || limpiarValor(val)
+                obj[campo] = parsearFecha(val) || ''
               } else {
                 obj[campo] = limpiarValor(val)
               }
