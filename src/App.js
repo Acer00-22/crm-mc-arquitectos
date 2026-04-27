@@ -351,16 +351,16 @@ export default function App() {
     oportunidad: ['oportunidad', 'opportunity', 'proyecto', 'deal'],
     telefono: ['telefono', 'teléfono', 'tel', 'phone', 'celular', 'movil', 'móvil', 'whatsapp'],
     correo: ['correo', 'email', 'e-mail', 'mail'],
-    tiene_infonavit: ['infonavit', 'tiene_infonavit', 'crédito', 'credito'],
-    tiene_terreno: ['terreno', 'tiene_terreno'],
-    ubicacion_terreno: ['ubicacion', 'ubicación', 'ubicacion_terreno', 'ubicación_terreno', 'colonia', 'direccion', 'dirección'],
+    tiene_infonavit: ['infonavit', 'tiene_infonavit', 'tiene infonavit', 'crédito', 'credito'],
+    tiene_terreno: ['terreno', 'tiene_terreno', 'tiene terreno'],
+    ubicacion_terreno: ['ubicacion', 'ubicación', 'ubicacion_terreno', 'ubicación_terreno', 'ubicacion del terreno', 'ubicación del terreno', 'colonia', 'direccion', 'dirección'],
     fuente: ['fuente', 'source', 'origen'],
-    tipo_interes: ['tipo_interes', 'tipo', 'interes', 'interés', 'tipo de interes', 'tipo de interés'],
-    probabilidad_cierre: ['probabilidad', 'probabilidad_cierre', 'prioridad'],
+    tipo_interes: ['tipo_interes', 'tipo de interes', 'tipo de interés', 'tipo interes', 'tipo interés'],
+    probabilidad_cierre: ['probabilidad', 'probabilidad_cierre', 'probablidad', 'probablidad de cierre', 'probabilidad de cierre', 'prioridad'],
     estatus: ['estatus', 'status', 'estado'],
     asesor: ['asesor', 'vendedor', 'agente', 'responsable'],
-    proxima_accion: ['proxima_accion', 'próxima_acción', 'accion', 'acción', 'siguiente paso'],
-    fecha_proximo_contacto: ['fecha_proximo_contacto', 'fecha', 'próxima fecha', 'fecha contacto'],
+    proxima_accion: ['proxima_accion', 'próxima_acción', 'dia de contacto', 'día de contacto', 'accion', 'siguiente paso'],
+    fecha_proximo_contacto: ['fecha_proximo_contacto', 'fecha proximo contacto', 'próxima fecha', 'fecha contacto'],
     notas: ['notas', 'nota', 'comentarios', 'observaciones']
   }
 
@@ -382,6 +382,26 @@ export default function App() {
     if (typeof val === 'boolean') return val
     const s = (val || '').toString().toLowerCase().trim()
     return s === 'si' || s === 'sí' || s === 'yes' || s === '1' || s === 'true'
+  }
+
+  function limpiarValor(val) {
+    const s = (val || '').toString().trim()
+    if (['n/a', 'na', 'n.a.', '-', 'ninguno', 'ninguna', 'none'].includes(s.toLowerCase())) return ''
+    return s
+  }
+
+  const MESES_ES = { enero:1, febrero:2, marzo:3, abril:4, mayo:5, junio:6, julio:7, agosto:8, septiembre:9, octubre:10, noviembre:11, diciembre:12 }
+  function parsearFechaEspanol(val) {
+    if (!val) return null
+    const s = val.toString().trim()
+    const match = s.match(/(\d{1,2})\s+de\s+(\w+)\s+(?:de\s+)?(\d{4})/i)
+    if (match) {
+      const dia = match[1].padStart(2, '0')
+      const mes = MESES_ES[match[2].toLowerCase()]
+      if (mes) return `${match[3]}-${String(mes).padStart(2, '0')}-${dia}`
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+    return null
   }
 
   function normalizarTelefono52(tel) {
@@ -455,15 +475,17 @@ export default function App() {
               if (campo === 'tiene_infonavit' || campo === 'tiene_terreno') {
                 obj[campo] = parsearBooleano(val)
               } else if (campo === 'estatus') {
-                const s = (val || '').toString().toLowerCase().trim()
+                const s = limpiarValor(val).toLowerCase()
                 obj[campo] = ['nuevo', 'en seguimiento', 'cerrado', 'perdido'].includes(s) ? s : 'nuevo'
               } else if (campo === 'probabilidad_cierre') {
-                const s = (val || '').toString().toLowerCase().trim()
-                obj[campo] = ['alta', 'media', 'baja'].includes(s) ? s : (val ? val.toString() : '')
+                const s = limpiarValor(val).toLowerCase()
+                obj[campo] = ['alta', 'media', 'baja'].includes(s) ? s : ''
               } else if (campo === 'telefono') {
                 obj[campo] = normalizarTelefono52(val)
+              } else if (campo === 'fecha_proximo_contacto' || campo === 'proxima_accion') {
+                obj[campo] = parsearFechaEspanol(val) || limpiarValor(val)
               } else {
-                obj[campo] = val !== undefined && val !== null ? val.toString().trim() : ''
+                obj[campo] = limpiarValor(val)
               }
             })
             if (usuario?.rol === 'asesor' && !obj.asesor) obj.asesor = usuario.nombre
