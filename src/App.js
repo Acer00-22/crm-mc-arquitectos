@@ -384,9 +384,57 @@ export default function App() {
     return s === 'si' || s === 'sí' || s === 'yes' || s === '1' || s === 'true'
   }
 
+  function normalizarTelefono52(tel) {
+    if (!tel) return ''
+    const digits = tel.toString().replace(/\D/g, '')
+    if (digits.length === 10) return '+52' + digits
+    if (digits.length === 12 && digits.startsWith('52')) return '+' + digits
+    if (digits.length === 13 && digits.startsWith('521')) return '+52' + digits.slice(3)
+    if (tel.toString().trim().startsWith('+52')) return tel.toString().trim()
+    return '+52' + digits
+  }
+
+  async function corregirOrtografiaGroq(clientes_raw) {
+    const apiKey = process.env.REACT_APP_GROQ_API_KEY
+    if (!apiKey) return clientes_raw
+    try {
+      const nombres = clientes_raw.map((c, i) => `${i}|${c.nombre}|${c.ubicacion_terreno || ''}|${c.notas || ''}|${c.oportunidad || ''}`).join('\n')
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          max_tokens: 2000,
+          messages: [{
+            role: 'system',
+            content: 'Eres un corrector ortográfico de español. Recibirás líneas con formato: índice|nombre|ubicación|notas|oportunidad. Corrige SOLO faltas de ortografía y acentos. Devuelve exactamente el mismo formato sin cambiar el significado. Una línea por registro. Sin explicaciones.'
+          }, {
+            role: 'user',
+            content: nombres
+          }]
+        })
+      })
+      const json = await res.json()
+      const lineas = json.choices[0].message.content.trim().split('\n')
+      return clientes_raw.map((c, i) => {
+        const partes = (lineas[i] || '').split('|')
+        if (partes.length < 2) return c
+        return {
+          ...c,
+          nombre: partes[1]?.trim() || c.nombre,
+          ubicacion_terreno: partes[2]?.trim() || c.ubicacion_terreno,
+          notas: partes[3]?.trim() || c.notas,
+          oportunidad: partes[4]?.trim() || c.oportunidad,
+        }
+      })
+    } catch {
+      return clientes_raw
+    }
+  }
+
   function procesarExcel(file) {
     const reader = new FileReader()
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const wb = XLSX.read(e.target.result, { type: 'array' })
         const ws = wb.Sheets[wb.SheetNames[0]]
@@ -396,7 +444,7 @@ export default function App() {
         const headers = rows[0]
         const mapeo = headers.map(h => detectarCampo(h))
 
-        const clientes_import = rows.slice(1)
+        const clientes_raw = rows.slice(1)
           .filter(row => row.some(cell => cell !== ''))
           .map(row => {
             const obj = { ...clienteVacio }
@@ -412,6 +460,8 @@ export default function App() {
               } else if (campo === 'probabilidad_cierre') {
                 const s = (val || '').toString().toLowerCase().trim()
                 obj[campo] = ['alta', 'media', 'baja'].includes(s) ? s : (val ? val.toString() : '')
+              } else if (campo === 'telefono') {
+                obj[campo] = normalizarTelefono52(val)
               } else {
                 obj[campo] = val !== undefined && val !== null ? val.toString().trim() : ''
               }
@@ -421,6 +471,9 @@ export default function App() {
           })
           .filter(c => c.nombre)
 
+        setImportPreview([])
+        setImportResultado({ ok: false, msg: '✨ Corrigiendo ortografía con IA...' })
+        const clientes_import = await corregirOrtografiaGroq(clientes_raw)
         setImportPreview(clientes_import)
         setImportResultado(null)
       } catch {
