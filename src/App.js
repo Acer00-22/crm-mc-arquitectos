@@ -328,6 +328,21 @@ export default function App() {
     return ''
   }
 
+  async function completarTiposInteres() {
+    const sinTipo = clientes.filter(c => !c.tipo_interes && c.oportunidad)
+    if (sinTipo.length === 0) return alert('Todos los clientes ya tienen tipo de interés.')
+    let actualizados = 0
+    for (const c of sinTipo) {
+      const tipo = inferirTipoInteres(c.oportunidad)
+      if (tipo) {
+        await supabase.from('clientes').update({ tipo_interes: tipo }).eq('id', c.id)
+        actualizados++
+      }
+    }
+    await cargarClientes()
+    alert(`${actualizados} cliente(s) actualizados.`)
+  }
+
   function editarCliente(cliente) {
     const tipo = cliente.tipo_interes || inferirTipoInteres(cliente.oportunidad)
     setForm({ ...cliente, tipo_interes: tipo })
@@ -1201,6 +1216,12 @@ export default function App() {
                   <button onClick={eliminarSeleccionados}
                     className="flex items-center gap-1.5 bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 text-sm font-medium">
                     <X size={15} /> Eliminar {seleccionados.length} seleccionado(s)
+                  </button>
+                )}
+                {clientes.some(c => !c.tipo_interes) && (
+                  <button onClick={completarTiposInteres}
+                    className="flex items-center gap-1.5 bg-orange-50 border border-orange-200 text-orange-600 px-3 py-2 rounded-lg hover:bg-orange-100 text-sm font-medium">
+                    ⚡ Completar tipos
                   </button>
                 )}
                 <button onClick={exportarCSV}
