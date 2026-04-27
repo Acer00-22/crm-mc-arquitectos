@@ -318,8 +318,19 @@ export default function App() {
     cargarClientes()
   }
 
+  function inferirTipoInteres(oportunidad) {
+    const op = (oportunidad || '').toLowerCase()
+    if (op.includes('construc') || op.includes('casa nueva') || op.includes('terreno')) return 'Construcción nueva'
+    if (op.includes('remodel') || op.includes('renov')) return 'Remodelación'
+    if (op.includes('venta') || op.includes('vender') || op.includes('vende')) return 'Venta de casa'
+    if (op.includes('inform') || op.includes('cotiz') || op.includes('precio') || op.includes('seguim')) return 'Solo informándose'
+    if (op.includes('potencial') || op.includes('calificado') || op.includes('interesado')) return 'Cliente potencial calificado'
+    return ''
+  }
+
   function editarCliente(cliente) {
-    setForm(cliente)
+    const tipo = cliente.tipo_interes || inferirTipoInteres(cliente.oportunidad)
+    setForm({ ...cliente, tipo_interes: tipo })
     setClienteEditando(cliente.id)
     setMostrarFormulario(true)
   }
@@ -567,15 +578,8 @@ export default function App() {
               }
             })
             if (usuario?.rol === 'asesor' && !obj.asesor) obj.asesor = usuario.nombre
-            // Si no hay tipo_interes, intentar inferirlo desde el texto de oportunidad
-            if (!obj.tipo_interes && obj.oportunidad) {
-              const op = obj.oportunidad.toLowerCase()
-              if (op.includes('construc') || op.includes('casa nueva') || op.includes('terreno')) obj.tipo_interes = 'Construcción nueva'
-              else if (op.includes('remodel') || op.includes('renov')) obj.tipo_interes = 'Remodelación'
-              else if (op.includes('venta') || op.includes('vender') || op.includes('vende')) obj.tipo_interes = 'Venta de casa'
-              else if (op.includes('inform') || op.includes('cotiz') || op.includes('precio') || op.includes('seguim')) obj.tipo_interes = 'Solo informándose'
-              else if (op.includes('potencial') || op.includes('calificado') || op.includes('interesado')) obj.tipo_interes = 'Cliente potencial calificado'
-            }
+            if (!obj.tipo_interes && obj.oportunidad)
+              obj.tipo_interes = inferirTipoInteres(obj.oportunidad)
             if (!obj.probabilidad_cierre) {
               const tieneInfo = obj.tiene_infonavit
               const tieneTerre = obj.tiene_terreno
