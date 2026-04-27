@@ -2224,22 +2224,13 @@ export default function App() {
                   const tieneTerre = form.tiene_terreno
                   const esPotencial = ['Construcción nueva', 'Cliente potencial calificado'].includes(tipo)
                   let prob = form.probabilidad_cierre
-                  let opor = form.oportunidad
                   if (tipo) {
                     if (tieneInfo && tieneTerre && esPotencial) prob = 'alta'
                     else if ((tieneInfo || tieneTerre) && esPotencial) prob = 'media'
                     else if (esPotencial) prob = 'media'
                     else prob = 'baja'
-                    const mapaOpor = {
-                      'Construcción nueva': 'Casa nueva en terreno propio',
-                      'Cliente potencial calificado': 'Cliente con alta intención de compra',
-                      'Remodelación': 'Remodelación de espacio existente',
-                      'Venta de casa': 'Interesado en venta de propiedad',
-                      'Solo informándose': 'Exploración inicial sin compromiso',
-                    }
-                    if (!form.oportunidad) opor = mapaOpor[tipo] || ''
                   }
-                  setForm({ ...form, tipo_interes: tipo, probabilidad_cierre: prob, oportunidad: opor })
+                  setForm({ ...form, tipo_interes: tipo, probabilidad_cierre: prob })
                 }}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300">
                   <option value="">Seleccionar...</option>
