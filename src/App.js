@@ -230,6 +230,22 @@ export default function App() {
     setCargando(false)
   }
 
+  async function sincronizarCitaAgenda(clienteId, nombreCliente, fechaProximo, asesor) {
+    const titulo = `📅 Seguimiento: ${nombreCliente}`
+    await supabase.from('citas').delete().eq('cliente_id', clienteId).like('titulo', '📅 Seguimiento:%')
+    if (fechaProximo) {
+      await supabase.from('citas').insert([{
+        titulo,
+        fecha: fechaProximo,
+        hora: '',
+        asesor: asesor || usuario.nombre,
+        notas: 'Generado automáticamente desde ficha de cliente',
+        cliente_id: clienteId
+      }])
+    }
+    cargarCitas()
+  }
+
   async function guardarCliente() {
     if (!form.nombre) return alert('El nombre es obligatorio')
     const datosGuardar = { ...form }
@@ -241,9 +257,11 @@ export default function App() {
     }
     if (clienteEditando) {
       await supabase.from('clientes').update(datosGuardar).eq('id', clienteEditando)
+      await sincronizarCitaAgenda(clienteEditando, form.nombre, form.fecha_proximo_contacto, form.asesor)
     } else {
       const nuevos = { ...datosGuardar, num_contactos: form.proxima_accion ? 1 : 0 }
-      await supabase.from('clientes').insert([nuevos])
+      const { data } = await supabase.from('clientes').insert([nuevos]).select('id').single()
+      if (data?.id) await sincronizarCitaAgenda(data.id, form.nombre, form.fecha_proximo_contacto, form.asesor)
     }
     setMostrarFormulario(false)
     setClienteEditando(null)
@@ -253,8 +271,10 @@ export default function App() {
 
   async function eliminarCliente(id) {
     if (!window.confirm('¿Eliminar este cliente?')) return
+    await supabase.from('citas').delete().eq('cliente_id', id).like('titulo', '📅 Seguimiento:%')
     await supabase.from('clientes').delete().eq('id', id)
     cargarClientes()
+    cargarCitas()
   }
 
   async function marcarContactado(id) {
