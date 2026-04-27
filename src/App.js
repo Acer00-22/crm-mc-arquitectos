@@ -309,7 +309,18 @@ export default function App() {
   }
 
   async function marcarContactado(id) {
-    await supabase.from('clientes').update({ updated_at: new Date().toISOString() }).eq('id', id)
+    const cliente = clientes.find(c => c.id === id)
+    const nuevosContactos = (cliente?.num_contactos || 0) + 1
+    const diasSiguiente = nuevosContactos === 1 ? 15 : 30
+    const hoy = new Date()
+    const proxima = new Date(hoy)
+    proxima.setDate(proxima.getDate() + diasSiguiente)
+    await supabase.from('clientes').update({
+      updated_at: hoy.toISOString(),
+      num_contactos: nuevosContactos,
+      proxima_accion: hoy.toISOString().slice(0, 10),
+      fecha_proximo_contacto: proxima.toISOString().slice(0, 10),
+    }).eq('id', id)
     cargarClientes()
   }
 
@@ -1356,7 +1367,13 @@ export default function App() {
                           </td>
                           <td className="px-4 py-3 text-gray-500">{c.asesor}</td>
                           <td className="px-4 py-3">
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center">
+                              <button onClick={() => marcarContactado(c.id)} title="Contacto hecho"
+                                className="w-6 h-6 rounded-full border-2 border-gray-300 hover:border-green-500 hover:bg-green-50 flex items-center justify-center transition-colors group">
+                                <svg className="w-3 h-3 text-gray-300 group-hover:text-green-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              </button>
                               <button onClick={() => editarCliente(c)} className="text-brand-gold hover:text-yellow-700"><Edit2 size={15} /></button>
                               <button onClick={() => eliminarCliente(c.id)} className="text-red-400 hover:text-red-600"><X size={15} /></button>
                             </div>
@@ -2261,7 +2278,11 @@ export default function App() {
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Próximo contacto en</label>
                 <div className="flex gap-2 mb-2">
-                  {[7, 15, 30].map(dias => (
+                  {[7, 15, 30].map(dias => {
+                    const n = form.num_contactos || 0
+                    const sugerido = n === 0 ? 7 : n === 1 ? 15 : 30
+                    const activo = dias === sugerido
+                    return (
                     <button key={dias} type="button"
                       onClick={() => {
                         const base = form.proxima_accion || new Date().toISOString().slice(0, 10)
@@ -2269,10 +2290,11 @@ export default function App() {
                         d.setDate(d.getDate() + dias)
                         setForm({ ...form, fecha_proximo_contacto: d.toISOString().slice(0, 10) })
                       }}
-                      className="flex-1 border border-gray-200 rounded-lg py-1.5 text-sm font-medium text-gray-600 hover:bg-yellow-50 hover:border-yellow-300 hover:text-yellow-700 transition-colors">
-                      +{dias} días
+                      className={`flex-1 border rounded-lg py-1.5 text-sm font-medium transition-colors ${activo ? 'bg-yellow-400 border-yellow-500 text-white' : 'border-gray-200 text-gray-600 hover:bg-yellow-50 hover:border-yellow-300 hover:text-yellow-700'}`}>
+                      +{dias} días{activo ? ' ✓' : ''}
                     </button>
-                  ))}
+                    )
+                  })}
                 </div>
                 <input type="date" value={form.fecha_proximo_contacto || ''}
                   onChange={e => setForm({ ...form, fecha_proximo_contacto: e.target.value })}
