@@ -921,7 +921,7 @@ export default function App() {
             })()}
 
             {/* CARDS ESTILO SALESFORCE */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 
               {/* CERRAR TRATOS */}
               {(() => {
@@ -1022,56 +1022,6 @@ export default function App() {
                 )
               })()}
 
-              {/* NUEVOS ESTE MES */}
-              {(() => {
-                const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30)
-                const nuevosEsteMes = clientesVisibles.filter(c => c.created_at && new Date(c.created_at) >= hace30)
-                const fbs = nuevosEsteMes.filter(c => c.fuente === 'Facebook').length
-                const wsp = nuevosEsteMes.filter(c => c.fuente === 'WhatsApp').length
-                const rec = nuevosEsteMes.filter(c => c.fuente === 'Recomendación').length
-                const total = nuevosEsteMes.length
-                const r = 40, circ = 2 * Math.PI * r
-                const pct = clientesVisibles.length > 0 ? total / clientesVisibles.length : 0
-                return (
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col">
-                    <div className="px-5 pt-5 pb-2">
-                      <h3 className="font-bold text-gray-800 text-sm">Nuevos Leads</h3>
-                      <p className="text-xs text-gray-400 mt-0.5">Creados en los últimos 30 días</p>
-                    </div>
-                    <div className="flex items-center gap-6 px-5 py-4 flex-1">
-                      <div className="relative flex-shrink-0">
-                        <svg width="100" height="100" viewBox="0 0 100 100">
-                          <circle cx="50" cy="50" r={r} fill="none" stroke="#f3f4f6" strokeWidth="10" />
-                          <circle cx="50" cy="50" r={r} fill="none" stroke="#6366f1" strokeWidth="10"
-                            strokeDasharray={`${pct * circ} ${circ}`} strokeLinecap="round"
-                            transform="rotate(-90 50 50)" />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <span className="text-xl font-bold text-gray-800">{total}</span>
-                          <span className="text-xs text-gray-400">Nuevos</span>
-                        </div>
-                      </div>
-                      <div className="space-y-2 text-sm flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0"></span>
-                          <span className="text-gray-600">{fbs} Facebook</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0"></span>
-                          <span className="text-gray-600">{wsp} WhatsApp</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-purple-400 flex-shrink-0"></span>
-                          <span className="text-gray-600">{rec} Recomendación</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="border-t border-gray-100 px-5 py-3">
-                      <button onClick={() => setVista('clientes')} className="text-sm text-brand-gold font-medium hover:underline">Ver Clientes →</button>
-                    </div>
-                  </div>
-                )
-              })()}
             </div>
 
             {/* FILA 2: Pipeline este mes + Próximos a vencer + Eventos de hoy */}
