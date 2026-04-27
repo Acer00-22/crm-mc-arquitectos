@@ -318,33 +318,44 @@ export default function App() {
     cargarClientes()
   }
 
-  function inferirTipoInteres(oportunidad) {
-    const op = (oportunidad || '').toLowerCase()
-    if (op.includes('construc') || op.includes('casa nueva') || op.includes('terreno')) return 'Construcción nueva'
+  const TIPOS_VALIDOS = ['Construcción nueva', 'Remodelación', 'Venta de casa', 'Solo informándose', 'Cliente potencial calificado']
+
+  function inferirTipoInteres(texto) {
+    const op = (texto || '').toLowerCase()
+    if (op.includes('construc') || op.includes('casa nueva') || op.includes('terreno') || op.includes('contruir') || op.includes('contrui')) return 'Construcción nueva'
     if (op.includes('remodel') || op.includes('renov')) return 'Remodelación'
     if (op.includes('venta') || op.includes('vender') || op.includes('vende')) return 'Venta de casa'
-    if (op.includes('inform') || op.includes('cotiz') || op.includes('precio') || op.includes('seguim')) return 'Solo informándose'
+    if (op.includes('inform') || op.includes('cotiz') || op.includes('precio') || op.includes('seguim') || op.includes('buscan') || op.includes('busca')) return 'Solo informándose'
     if (op.includes('potencial') || op.includes('calificado') || op.includes('interesado')) return 'Cliente potencial calificado'
     return ''
   }
 
+  function normalizarTipoInteres(tipo, oportunidad) {
+    if (TIPOS_VALIDOS.includes(tipo)) return tipo
+    // Intenta arreglar el valor mal escrito usando el mismo texto del tipo
+    const inferidoDeTipo = inferirTipoInteres(tipo)
+    if (inferidoDeTipo) return inferidoDeTipo
+    // Si no, infiere desde la oportunidad
+    return inferirTipoInteres(oportunidad)
+  }
+
   async function completarTiposInteres() {
-    const sinTipo = clientes.filter(c => !c.tipo_interes && c.oportunidad)
-    if (sinTipo.length === 0) return alert('Todos los clientes ya tienen tipo de interés.')
+    const porCorregir = clientes.filter(c => !TIPOS_VALIDOS.includes(c.tipo_interes))
+    if (porCorregir.length === 0) return alert('Todos los clientes ya tienen tipo de interés válido.')
     let actualizados = 0
-    for (const c of sinTipo) {
-      const tipo = inferirTipoInteres(c.oportunidad)
+    for (const c of porCorregir) {
+      const tipo = normalizarTipoInteres(c.tipo_interes, c.oportunidad)
       if (tipo) {
         await supabase.from('clientes').update({ tipo_interes: tipo }).eq('id', c.id)
         actualizados++
       }
     }
     await cargarClientes()
-    alert(`${actualizados} cliente(s) actualizados.`)
+    alert(`${actualizados} cliente(s) corregidos.`)
   }
 
   function editarCliente(cliente) {
-    const tipo = cliente.tipo_interes || inferirTipoInteres(cliente.oportunidad)
+    const tipo = normalizarTipoInteres(cliente.tipo_interes, cliente.oportunidad)
     setForm({ ...cliente, tipo_interes: tipo })
     setClienteEditando(cliente.id)
     setMostrarFormulario(true)
@@ -733,7 +744,7 @@ export default function App() {
   })
 
   const completitudCliente = (c) => {
-    if (!c.tipo_interes) return { color: 'bg-red-100 text-red-600', label: 'Sin tipo de interés' }
+    if (!c.tipo_interes || !TIPOS_VALIDOS.includes(c.tipo_interes)) return { color: 'bg-red-100 text-red-600', label: 'Sin tipo de interés' }
     const otros = ['telefono', 'oportunidad', 'probabilidad_cierre', 'asesor', 'proxima_accion']
     const faltantes = otros.filter(k => !c[k]).length
     if (faltantes > 0) return { color: 'bg-yellow-100 text-yellow-700', label: `Faltan ${faltantes} campo${faltantes > 1 ? 's' : ''}` }
@@ -1218,7 +1229,7 @@ export default function App() {
                     <X size={15} /> Eliminar {seleccionados.length} seleccionado(s)
                   </button>
                 )}
-                {clientes.some(c => !c.tipo_interes) && (
+                {clientes.some(c => !TIPOS_VALIDOS.includes(c.tipo_interes)) && (
                   <button onClick={completarTiposInteres}
                     className="flex items-center gap-1.5 bg-orange-50 border border-orange-200 text-orange-600 px-3 py-2 rounded-lg hover:bg-orange-100 text-sm font-medium">
                     ⚡ Completar tipos
