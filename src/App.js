@@ -714,12 +714,8 @@ export default function App() {
   })
 
   const completitudCliente = (c) => {
-    const campos = ['telefono', 'oportunidad', 'tipo_interes', 'probabilidad_cierre', 'asesor', 'proxima_accion']
-    const llenos = campos.filter(k => c[k]).length
-    const pct = llenos / campos.length
-    if (pct === 1) return { color: 'bg-green-100 text-green-700', label: 'Completo' }
-    if (pct >= 0.5) return { color: 'bg-yellow-100 text-yellow-700', label: `${llenos}/${campos.length} campos` }
-    return { color: 'bg-red-100 text-red-600', label: `${llenos}/${campos.length} campos` }
+    if (!c.tipo_interes) return { color: 'bg-red-100 text-red-600', label: 'Sin tipo de interés' }
+    return { color: 'bg-green-100 text-green-700', label: 'Completo' }
   }
 
   if (!usuario) {
