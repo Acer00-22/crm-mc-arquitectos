@@ -573,7 +573,7 @@ export default function App() {
               if (op.includes('construc') || op.includes('casa nueva') || op.includes('terreno')) obj.tipo_interes = 'Construcción nueva'
               else if (op.includes('remodel') || op.includes('renov')) obj.tipo_interes = 'Remodelación'
               else if (op.includes('venta') || op.includes('vender') || op.includes('vende')) obj.tipo_interes = 'Venta de casa'
-              else if (op.includes('inform') || op.includes('cotiz') || op.includes('precio')) obj.tipo_interes = 'Solo informándose'
+              else if (op.includes('inform') || op.includes('cotiz') || op.includes('precio') || op.includes('seguim')) obj.tipo_interes = 'Solo informándose'
               else if (op.includes('potencial') || op.includes('calificado') || op.includes('interesado')) obj.tipo_interes = 'Cliente potencial calificado'
             }
             if (!obj.probabilidad_cierre) {
