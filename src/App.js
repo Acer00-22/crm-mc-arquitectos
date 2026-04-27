@@ -713,6 +713,15 @@ export default function App() {
     return coincideTexto && coincideEstatus && coincideFuente && coincideProbabilidad
   })
 
+  const completitudCliente = (c) => {
+    const campos = ['telefono', 'oportunidad', 'tipo_interes', 'probabilidad_cierre', 'asesor', 'proxima_accion']
+    const llenos = campos.filter(k => c[k]).length
+    const pct = llenos / campos.length
+    if (pct === 1) return { color: 'bg-green-100 text-green-700', label: 'Completo' }
+    if (pct >= 0.5) return { color: 'bg-yellow-100 text-yellow-700', label: `${llenos}/${campos.length} campos` }
+    return { color: 'bg-red-100 text-red-600', label: `${llenos}/${campos.length} campos` }
+  }
+
   if (!usuario) {
     return (
       <div className="min-h-screen bg-brand-dark flex items-center justify-center px-4">
@@ -1246,7 +1255,10 @@ export default function App() {
                             className="mt-1 w-4 h-4 accent-red-500 flex-shrink-0" />
                           <div>
                             <button onClick={() => abrirDetalle(c)} className="font-semibold text-gray-800 hover:text-brand-gold text-left">{c.nombre}</button>
-                            <p className="text-sm text-gray-500">{c.telefono}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm text-gray-500">{c.telefono}</p>
+                              <span className={`text-xs px-1.5 py-0.5 rounded-full ${completitudCliente(c).color}`}>{completitudCliente(c).label}</span>
+                            </div>
                           </div>
                         </div>
                         <div className="flex gap-2">
@@ -1286,7 +1298,12 @@ export default function App() {
                             <input type="checkbox" checked={seleccionados.includes(c.id)} onChange={() => toggleSeleccion(c.id)}
                               className="w-4 h-4 accent-red-500" />
                           </td>
-                          <td className="px-4 py-3"><button onClick={() => abrirDetalle(c)} className="font-medium text-gray-800 hover:text-brand-gold text-left">{c.nombre}</button></td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-col gap-0.5">
+                              <button onClick={() => abrirDetalle(c)} className="font-medium text-gray-800 hover:text-brand-gold text-left">{c.nombre}</button>
+                              <span className={`text-xs px-1.5 py-0.5 rounded-full w-fit ${completitudCliente(c).color}`}>{completitudCliente(c).label}</span>
+                            </div>
+                          </td>
                           <td className="px-4 py-3 text-gray-500">{c.oportunidad}</td>
                           <td className="px-4 py-3 text-gray-500">{c.telefono}</td>
                           <td className="px-4 py-3 text-gray-500">{c.tipo_interes}</td>
