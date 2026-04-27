@@ -665,10 +665,18 @@ export default function App() {
   async function confirmarImportacion() {
     if (importPreview.length === 0) return
     setImportCargando(true)
+    const hoy = new Date()
+    const en7dias = new Date(hoy); en7dias.setDate(en7dias.getDate() + 7)
+    const hoyStr = hoy.toISOString().slice(0, 10)
+    const en7diasStr = en7dias.toISOString().slice(0, 10)
     const camposFecha = ['fecha_proximo_contacto', 'proxima_accion']
     const datos = importPreview.map(c => {
       const { _prob_sugerida, ...limpio } = c
       camposFecha.forEach(f => { if (limpio[f] === '') limpio[f] = null })
+      // Si no tiene día de contacto, usar hoy; si no tiene próximo contacto, asignar +7 días
+      if (!limpio.proxima_accion) limpio.proxima_accion = hoyStr
+      if (!limpio.fecha_proximo_contacto) limpio.fecha_proximo_contacto = en7diasStr
+      if (!limpio.num_contactos) limpio.num_contactos = 0
       return limpio
     })
     const { data: insertados, error } = await supabase.from('clientes').insert(datos).select('id, nombre, fecha_proximo_contacto, asesor')
