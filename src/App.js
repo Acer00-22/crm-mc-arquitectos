@@ -489,6 +489,18 @@ export default function App() {
               }
             })
             if (usuario?.rol === 'asesor' && !obj.asesor) obj.asesor = usuario.nombre
+            if (!obj.probabilidad_cierre) {
+              const tieneInfo = obj.tiene_infonavit
+              const tieneTerre = obj.tiene_terreno
+              const tipo = (obj.tipo_interes || '').toLowerCase()
+              const esPotencial = ['construcción nueva', 'construccion nueva', 'cliente potencial calificado'].includes(tipo)
+              if (tieneInfo && tieneTerre) obj.probabilidad_cierre = 'alta'
+              else if ((tieneInfo || tieneTerre) && esPotencial) obj.probabilidad_cierre = 'media'
+              else if (tieneInfo || tieneTerre) obj.probabilidad_cierre = 'media'
+              else if (tipo.includes('informand')) obj.probabilidad_cierre = 'baja'
+              else obj.probabilidad_cierre = 'baja'
+              obj._prob_sugerida = true
+            }
             return obj
           })
           .filter(c => c.nombre)
@@ -510,7 +522,7 @@ export default function App() {
     setImportCargando(true)
     const camposFecha = ['fecha_proximo_contacto', 'proxima_accion']
     const datos = importPreview.map(c => {
-      const limpio = { ...c }
+      const { _prob_sugerida, ...limpio } = c
       camposFecha.forEach(f => { if (limpio[f] === '') limpio[f] = null })
       return limpio
     })
@@ -1977,7 +1989,7 @@ export default function App() {
                     <table className="w-full text-xs">
                       <thead className="bg-gray-50">
                         <tr>
-                          {['Nombre', 'Teléfono', 'Correo', 'Estatus', 'Asesor', 'Fuente'].map(h => (
+                          {['Nombre', 'Teléfono', 'Estatus', 'Probabilidad', 'Asesor', 'Fuente'].map(h => (
                             <th key={h} className="px-3 py-2 text-left font-semibold text-gray-600">{h}</th>
                           ))}
                         </tr>
@@ -1987,8 +1999,17 @@ export default function App() {
                           <tr key={i} className="border-t border-gray-100">
                             <td className="px-3 py-2 font-medium text-gray-800">{c.nombre || '—'}</td>
                             <td className="px-3 py-2 text-gray-600">{c.telefono || '—'}</td>
-                            <td className="px-3 py-2 text-gray-600">{c.correo || '—'}</td>
                             <td className="px-3 py-2 text-gray-600">{c.estatus || '—'}</td>
+                            <td className="px-3 py-2">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                c.probabilidad_cierre === 'alta' ? 'bg-green-100 text-green-700' :
+                                c.probabilidad_cierre === 'media' ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-red-100 text-red-700'
+                              }`}>
+                                {c.probabilidad_cierre || '—'}
+                              </span>
+                              {c._prob_sugerida && <span className="ml-1 text-gray-400" title="Sugerencia automática">💡</span>}
+                            </td>
                             <td className="px-3 py-2 text-gray-600">{c.asesor || '—'}</td>
                             <td className="px-3 py-2 text-gray-600">{c.fuente || '—'}</td>
                           </tr>
