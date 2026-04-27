@@ -514,12 +514,24 @@ export default function App() {
       camposFecha.forEach(f => { if (limpio[f] === '') limpio[f] = null })
       return limpio
     })
-    const { error } = await supabase.from('clientes').insert(datos)
+    const { data: insertados, error } = await supabase.from('clientes').insert(datos).select('id, nombre, fecha_proximo_contacto, asesor')
     if (error) {
       setImportResultado({ ok: false, msg: 'Error al importar: ' + error.message })
     } else {
+      const conFecha = (insertados || []).filter(c => c.fecha_proximo_contacto)
+      for (const c of conFecha) {
+        await supabase.from('citas').insert([{
+          titulo: `📅 Seguimiento: ${c.nombre}`,
+          fecha: c.fecha_proximo_contacto,
+          hora: '',
+          asesor: c.asesor || usuario.nombre,
+          notas: 'Generado automáticamente desde importación',
+          cliente_id: c.id
+        }])
+      }
       await cargarClientes()
-      setImportResultado({ ok: true, msg: `${importPreview.length} clientes importados correctamente` })
+      await cargarCitas()
+      setImportResultado({ ok: true, msg: `${importPreview.length} clientes importados correctamente${conFecha.length > 0 ? ` · ${conFecha.length} citas creadas en agenda` : ''}` })
       setImportPreview([])
     }
     setImportCargando(false)
