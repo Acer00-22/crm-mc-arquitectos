@@ -70,6 +70,10 @@ export default function App() {
   const [passwordForm, setPasswordForm] = useState({ nuevoNombre: '', actual: '', nueva: '', confirmar: '' })
   const [passwordError, setPasswordError] = useState('')
   const [passwordOk, setPasswordOk] = useState(false)
+  const [mostrarUsuarios, setMostrarUsuarios] = useState(false)
+  const [listaUsuarios, setListaUsuarios] = useState([])
+  const [nuevoUsuario, setNuevoUsuario] = useState({ nombre: '', password: '', rol: 'asesor' })
+  const [usuarioError, setUsuarioError] = useState('')
   const [citas, setCitas] = useState([])
   const [tareas, setTareas] = useState([])
   const [mesCalendario, setMesCalendario] = useState(() => {
@@ -702,6 +706,34 @@ export default function App() {
     setImportCargando(false)
   }
 
+  async function cargarUsuarios() {
+    const { data } = await supabase.from('usuarios').select('id, nombre, rol').order('nombre')
+    setListaUsuarios(data || [])
+  }
+
+  async function crearUsuario(e) {
+    e.preventDefault()
+    setUsuarioError('')
+    if (!nuevoUsuario.nombre.trim() || !nuevoUsuario.password.trim()) {
+      setUsuarioError('Nombre y contraseña son requeridos')
+      return
+    }
+    const { error } = await supabase.from('usuarios').insert([{
+      nombre: nuevoUsuario.nombre.trim(),
+      password: nuevoUsuario.password.trim(),
+      rol: nuevoUsuario.rol,
+    }])
+    if (error) { setUsuarioError('Error: ' + error.message); return }
+    setNuevoUsuario({ nombre: '', password: '', rol: 'asesor' })
+    cargarUsuarios()
+  }
+
+  async function eliminarUsuario(id) {
+    if (!window.confirm('¿Eliminar este usuario?')) return
+    await supabase.from('usuarios').delete().eq('id', id)
+    cargarUsuarios()
+  }
+
   async function guardarPerfil(e) {
     e.preventDefault()
     setPasswordError('')
@@ -870,6 +902,11 @@ export default function App() {
               <button onClick={() => { setMostrarCambioPassword(true); setPasswordError(''); setPasswordOk(false); setPasswordForm({ nuevoNombre: usuario.nombre, actual: '', nueva: '', confirmar: '' }) }} className="text-gray-400 hover:text-white text-xs px-2 py-1 rounded hover:bg-gray-700">
                 🔑
               </button>
+              {usuario.rol === 'dueño' && (
+                <button onClick={() => { setMostrarUsuarios(true); cargarUsuarios() }} className="text-gray-400 hover:text-white text-xs px-2 py-1 rounded hover:bg-gray-700">
+                  👥
+                </button>
+              )}
               <button onClick={cerrarSesion} className="text-gray-400 hover:text-white text-xs px-2 py-1 rounded hover:bg-gray-700">
                 Salir
               </button>
@@ -2190,6 +2227,62 @@ export default function App() {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL GESTIÓN DE USUARIOS */}
+      {mostrarUsuarios && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="text-base font-bold text-gray-800">👥 Gestión de usuarios</h3>
+              <button onClick={() => setMostrarUsuarios(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+
+            {/* Lista de usuarios existentes */}
+            <div className="mb-5 space-y-2">
+              {listaUsuarios.map(u => (
+                <div key={u.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-2.5">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{u.nombre}</p>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${u.rol === 'dueño' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200 text-gray-600'}`}>{u.rol}</span>
+                  </div>
+                  {u.nombre !== usuario.nombre && (
+                    <button onClick={() => eliminarUsuario(u.id)} className="text-red-400 hover:text-red-600"><X size={16} /></button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Formulario nuevo usuario */}
+            <div className="border-t pt-4">
+              <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Agregar usuario</p>
+              <form onSubmit={crearUsuario} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
+                  <input type="text" value={nuevoUsuario.nombre} onChange={e => setNuevoUsuario({ ...nuevoUsuario, nombre: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300" placeholder="Nombre completo" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Contraseña</label>
+                  <input type="text" value={nuevoUsuario.password} onChange={e => setNuevoUsuario({ ...nuevoUsuario, password: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300" placeholder="Contraseña inicial" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Rol</label>
+                  <select value={nuevoUsuario.rol} onChange={e => setNuevoUsuario({ ...nuevoUsuario, rol: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                    <option value="asesor">Asesor (ver y editar)</option>
+                    <option value="dueño">Dueño (acceso total)</option>
+                  </select>
+                </div>
+                {usuarioError && <p className="text-xs text-red-500">{usuarioError}</p>}
+                <button type="submit" className="w-full bg-brand-gold text-white py-2.5 rounded-lg font-medium text-sm hover:bg-yellow-700">
+                  Crear usuario
+                </button>
+              </form>
             </div>
           </div>
         </div>
