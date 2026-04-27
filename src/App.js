@@ -126,9 +126,18 @@ export default function App() {
     const canal = supabase
       .channel('clientes-cambios')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, () => cargarClientes())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'citas' }, () => cargarCitas())
       .subscribe()
     return () => supabase.removeChannel(canal)
   }, [usuario])
+
+  useEffect(() => {
+    if (!usuario) return
+    if (vista === 'dashboard') {
+      cargarClientes()
+      cargarCitas()
+    }
+  }, [vista])
 
   async function cargarCitas() {
     const { data } = await supabase.from('citas').select('*, clientes(nombre)').order('fecha').order('hora')
