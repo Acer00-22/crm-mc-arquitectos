@@ -3,6 +3,10 @@ import { supabase } from './config/supabase'
 import { Plus, X, Edit2, Save, Search, Bell, ArrowLeft, Clock, Eye, EyeOff, Upload } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import DatePicker, { registerLocale } from 'react-datepicker'
+import { es } from 'date-fns/locale'
+import 'react-datepicker/dist/react-datepicker.css'
+registerLocale('es', es)
 
 const ESTATUS_COLORES = {
   'nuevo': 'bg-blue-100 text-blue-800',
@@ -1972,9 +1976,12 @@ export default function App() {
               {/* DÍA DE CONTACTO + FECHA PRÓXIMO CONTACTO AUTOMÁTICO */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Día de contacto</label>
-                <input type="date" value={form.proxima_accion || ''}
-                  onChange={e => {
-                    const fecha = e.target.value
+                <DatePicker
+                  locale="es"
+                  dateFormat="dd/MM/yyyy"
+                  selected={form.proxima_accion ? new Date(form.proxima_accion + 'T12:00:00') : null}
+                  onChange={date => {
+                    const fecha = date ? date.toISOString().slice(0, 10) : ''
                     const dias = (form.num_contactos || 0) >= 1 ? 30 : 15
                     let proxima = ''
                     if (fecha) {
@@ -1984,7 +1991,12 @@ export default function App() {
                     }
                     setForm({ ...form, proxima_accion: fecha, fecha_proximo_contacto: proxima })
                   }}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300" />
+                  placeholderText="Selecciona una fecha"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                  wrapperClassName="w-full"
+                  isClearable
+                  showPopperArrow={false}
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
