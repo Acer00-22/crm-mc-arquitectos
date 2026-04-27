@@ -80,6 +80,7 @@ export default function App() {
   const [mostrarFormTarea, setMostrarFormTarea] = useState(false)
   const [formCita, setFormCita] = useState({ titulo: '', fecha: '', hora: '', asesor: '', notas: '', cliente_id: '' })
   const [formTarea, setFormTarea] = useState({ titulo: '', descripcion: '', prioridad: 'media', fecha_limite: '', asesor: '' })
+  const [seleccionados, setSeleccionados] = useState([])
   const [campanas, setCampanas] = useState([])
   const [campanaDetalle, setCampanaDetalle] = useState(null)
   const [campanaClientes, setCampanaClientes] = useState([])
@@ -275,6 +276,27 @@ export default function App() {
     await supabase.from('clientes').delete().eq('id', id)
     cargarClientes()
     cargarCitas()
+  }
+
+  async function eliminarSeleccionados() {
+    if (seleccionados.length === 0) return
+    if (!window.confirm(`¿Eliminar ${seleccionados.length} cliente(s) seleccionados?`)) return
+    for (const id of seleccionados) {
+      await supabase.from('citas').delete().eq('cliente_id', id).like('titulo', '📅 Seguimiento:%')
+    }
+    await supabase.from('clientes').delete().in('id', seleccionados)
+    setSeleccionados([])
+    cargarClientes()
+    cargarCitas()
+  }
+
+  function toggleSeleccion(id) {
+    setSeleccionados(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  function toggleTodos() {
+    const todosIds = clientesFiltrados.map(c => c.id)
+    setSeleccionados(prev => prev.length === todosIds.length ? [] : todosIds)
   }
 
   async function marcarContactado(id) {
@@ -1130,7 +1152,13 @@ export default function App() {
           <div>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold text-gray-800">Clientes</h2>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
+                {seleccionados.length > 0 && (
+                  <button onClick={eliminarSeleccionados}
+                    className="flex items-center gap-1.5 bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 text-sm font-medium">
+                    <X size={15} /> Eliminar {seleccionados.length} seleccionado(s)
+                  </button>
+                )}
                 <button onClick={exportarCSV}
                   className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium">
                   ⬇ Exportar
@@ -1179,11 +1207,15 @@ export default function App() {
               <>
                 <div className="md:hidden space-y-3">
                   {clientesFiltrados.map(c => (
-                    <div key={c.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <div key={c.id} className={`bg-white rounded-xl p-4 shadow-sm border ${seleccionados.includes(c.id) ? 'border-red-300 bg-red-50' : 'border-gray-100'}`}>
                       <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <button onClick={() => abrirDetalle(c)} className="font-semibold text-gray-800 hover:text-brand-gold text-left">{c.nombre}</button>
-                          <p className="text-sm text-gray-500">{c.telefono}</p>
+                        <div className="flex items-start gap-2">
+                          <input type="checkbox" checked={seleccionados.includes(c.id)} onChange={() => toggleSeleccion(c.id)}
+                            className="mt-1 w-4 h-4 accent-red-500 flex-shrink-0" />
+                          <div>
+                            <button onClick={() => abrirDetalle(c)} className="font-semibold text-gray-800 hover:text-brand-gold text-left">{c.nombre}</button>
+                            <p className="text-sm text-gray-500">{c.telefono}</p>
+                          </div>
                         </div>
                         <div className="flex gap-2">
                           <button onClick={() => editarCliente(c)} className="text-brand-gold"><Edit2 size={15} /></button>
@@ -1204,6 +1236,12 @@ export default function App() {
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50 border-b border-gray-100">
                       <tr>
+                        <th className="px-4 py-3 w-8">
+                          <input type="checkbox"
+                            checked={seleccionados.length === clientesFiltrados.length && clientesFiltrados.length > 0}
+                            onChange={toggleTodos}
+                            className="w-4 h-4 accent-red-500" />
+                        </th>
                         {['Nombre', 'Oportunidad', 'Teléfono', 'Fuente', 'Tipo', 'Probabilidad', 'Estatus', 'Asesor', 'Acciones'].map(h => (
                           <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
                         ))}
@@ -1211,7 +1249,11 @@ export default function App() {
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {clientesFiltrados.map(c => (
-                        <tr key={c.id} className="hover:bg-gray-50">
+                        <tr key={c.id} className={`hover:bg-gray-50 ${seleccionados.includes(c.id) ? 'bg-red-50' : ''}`}>
+                          <td className="px-4 py-3">
+                            <input type="checkbox" checked={seleccionados.includes(c.id)} onChange={() => toggleSeleccion(c.id)}
+                              className="w-4 h-4 accent-red-500" />
+                          </td>
                           <td className="px-4 py-3"><button onClick={() => abrirDetalle(c)} className="font-medium text-gray-800 hover:text-brand-gold text-left">{c.nombre}</button></td>
                           <td className="px-4 py-3 text-gray-500">{c.oportunidad}</td>
                           <td className="px-4 py-3 text-gray-500">{c.telefono}</td>
