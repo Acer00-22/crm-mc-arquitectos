@@ -708,7 +708,7 @@ export default function App() {
       c.telefono?.toLowerCase().includes(texto) ||
       c.correo?.toLowerCase().includes(texto)
     const coincideEstatus = !filtroEstatus || c.estatus === filtroEstatus
-    const coincideFuente = !filtroFuente || c.fuente === filtroFuente
+    const coincideFuente = !filtroFuente || c.tipo_interes === filtroFuente
     const coincideProbabilidad = !filtroProbabilidad || c.probabilidad_cierre === filtroProbabilidad
     return coincideTexto && coincideEstatus && coincideFuente && coincideProbabilidad
   })
@@ -1220,8 +1220,8 @@ export default function App() {
               </select>
               <select value={filtroFuente} onChange={e => setFiltroFuente(e.target.value)}
                 className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300">
-                <option value="">Todas las fuentes</option>
-                {['Facebook', 'WhatsApp', 'Instagram', 'Recomendación', 'Otro'].map(o => <option key={o} value={o}>{o}</option>)}
+                <option value="">Todos los tipos</option>
+                {['Construcción nueva', 'Remodelación', 'Venta de casa', 'Solo informándose', 'Cliente potencial calificado'].map(o => <option key={o} value={o}>{o}</option>)}
               </select>
               <select value={filtroProbabilidad} onChange={e => setFiltroProbabilidad(e.target.value)}
                 className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300">
