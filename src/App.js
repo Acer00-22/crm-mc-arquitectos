@@ -34,7 +34,7 @@ const COLUMNAS = [
 const clienteVacio = {
   nombre: '', telefono: '', correo: '', oportunidad: '', tiene_infonavit: false, tiene_terreno: false,
   ubicacion_terreno: '', fuente: '', tipo_interes: '', probabilidad_cierre: '',
-  estatus: 'nuevo', asesor: '', proxima_accion: '', fecha_proximo_contacto: '', notas: ''
+  estatus: 'nuevo', asesor: '', proxima_accion: '', fecha_proximo_contacto: '', notas: '', num_contactos: 0
 }
 
 export default function App() {
@@ -228,10 +228,18 @@ export default function App() {
 
   async function guardarCliente() {
     if (!form.nombre) return alert('El nombre es obligatorio')
+    const datosGuardar = { ...form }
+    if (clienteEditando && form.proxima_accion) {
+      const original = clientes.find(c => c.id === clienteEditando)
+      if (original && original.proxima_accion !== form.proxima_accion) {
+        datosGuardar.num_contactos = (form.num_contactos || 0) + 1
+      }
+    }
     if (clienteEditando) {
-      await supabase.from('clientes').update(form).eq('id', clienteEditando)
+      await supabase.from('clientes').update(datosGuardar).eq('id', clienteEditando)
     } else {
-      await supabase.from('clientes').insert([form])
+      const nuevos = { ...datosGuardar, num_contactos: form.proxima_accion ? 1 : 0 }
+      await supabase.from('clientes').insert([nuevos])
     }
     setMostrarFormulario(false)
     setClienteEditando(null)
@@ -291,7 +299,7 @@ export default function App() {
   }
 
   function exportarCSV() {
-    const columnas = ['Nombre', 'Oportunidad', 'Teléfono', 'Correo', 'Estatus', 'Asesor', 'Fuente', 'Tipo de interés', 'Probabilidad', 'Tiene INFONAVIT', 'Tiene terreno', 'Ubicación terreno', 'Próxima acción', 'Fecha próximo contacto', 'Notas']
+    const columnas = ['Nombre', 'Oportunidad', 'Teléfono', 'Correo', 'Estatus', 'Asesor', 'Fuente', 'Tipo de interés', 'Probabilidad', 'Tiene INFONAVIT', 'Tiene terreno', 'Ubicación terreno', 'Día de contacto', 'Fecha próximo contacto', 'Notas']
     const filas = clientesFiltrados.map(c => [
       c.nombre, c.oportunidad, c.telefono, c.correo, c.estatus, c.asesor, c.fuente,
       c.tipo_interes, c.probabilidad_cierre,
@@ -1058,7 +1066,7 @@ export default function App() {
                         {c.probabilidad_cierre && <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PROBABILIDAD_COLORES[c.probabilidad_cierre] || ''}`}>{c.probabilidad_cierre}</span>}
                         {c.fuente && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{c.fuente}</span>}
                       </div>
-                      {c.proxima_accion && <p className="text-xs text-gray-500 mt-2">📋 {c.proxima_accion}</p>}
+                      {c.proxima_accion && <p className="text-xs text-gray-500 mt-2">📅 Contactado: {c.proxima_accion}</p>}
                     </div>
                   ))}
                 </div>
@@ -1133,7 +1141,7 @@ export default function App() {
                     {clienteDetalle.estatus && <span className={`text-xs px-2 py-1 rounded-full font-medium ${ESTATUS_COLORES[clienteDetalle.estatus] || ''}`}>{clienteDetalle.estatus}</span>}
                     {clienteDetalle.probabilidad_cierre && <span className={`text-xs px-2 py-1 rounded-full font-medium ${PROBABILIDAD_COLORES[clienteDetalle.probabilidad_cierre] || ''}`}>{clienteDetalle.probabilidad_cierre}</span>}
                   </div>
-                  {clienteDetalle.proxima_accion && <p className="text-xs text-gray-400 mt-2">📋 {clienteDetalle.proxima_accion}</p>}
+                  {clienteDetalle.proxima_accion && <p className="text-xs text-gray-400 mt-2">📅 Contactado: {clienteDetalle.proxima_accion}</p>}
                   {clienteDetalle.fecha_proximo_contacto && <p className="text-xs text-gray-400 mt-1">📅 Próximo contacto: {clienteDetalle.fecha_proximo_contacto}</p>}
                   {clienteDetalle.notas && <p className="text-sm text-gray-500 mt-2 italic">"{clienteDetalle.notas}"</p>}
                 </div>
@@ -1535,7 +1543,7 @@ export default function App() {
                     </span>
                   )}
                   {(() => { const s = getSemaforo(c.updated_at); return <span className="ml-1 text-xs" title={s.label}>{s.emoji} {s.label}</span> })()}
-                  {c.proxima_accion && <p className="text-xs text-gray-400 mt-2">📋 {c.proxima_accion}</p>}
+                  {c.proxima_accion && <p className="text-xs text-gray-400 mt-2">📅 Contactado: {c.proxima_accion}</p>}
                   <div className="mt-3 flex gap-1 flex-wrap">
                     {COLUMNAS.filter(col => col.key !== c.estatus).map(col => (
                       <button key={col.key} onClick={() => cambiarEstatus(c.id, col.key)}
@@ -1579,7 +1587,7 @@ export default function App() {
                           </span>
                         )}
                         {(() => { const s = getSemaforo(c.updated_at); return <p className="text-xs mt-1" title={s.label}>{s.emoji} {s.label}</p> })()}
-                        {c.proxima_accion && <p className="text-xs text-gray-400 mt-1">📋 {c.proxima_accion}</p>}
+                        {c.proxima_accion && <p className="text-xs text-gray-400 mt-1">📅 Contactado: {c.proxima_accion}</p>}
                         <div className="mt-2 flex gap-1 flex-wrap">
                           {COLUMNAS.filter(dest => dest.key !== col.key).map(dest => (
                             <button key={dest.key} onClick={() => cambiarEstatus(c.id, dest.key)}
@@ -1953,8 +1961,6 @@ export default function App() {
                 { label: 'Oportunidad', key: 'oportunidad', type: 'text' },
                 { label: 'Ubicación del terreno', key: 'ubicacion_terreno', type: 'text' },
                 { label: 'Asesor', key: 'asesor', type: 'text' },
-                { label: 'Próxima acción', key: 'proxima_accion', type: 'text' },
-                { label: 'Fecha próximo contacto', key: 'fecha_proximo_contacto', type: 'date' },
               ].map(({ label, key, type }) => (
                 <div key={key}>
                   <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
@@ -1962,6 +1968,37 @@ export default function App() {
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300" />
                 </div>
               ))}
+
+              {/* DÍA DE CONTACTO + FECHA PRÓXIMO CONTACTO AUTOMÁTICO */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Día de contacto</label>
+                <input type="date" value={form.proxima_accion || ''}
+                  onChange={e => {
+                    const fecha = e.target.value
+                    const dias = (form.num_contactos || 0) >= 1 ? 30 : 15
+                    let proxima = ''
+                    if (fecha) {
+                      const d = new Date(fecha + 'T12:00:00')
+                      d.setDate(d.getDate() + dias)
+                      proxima = d.toISOString().slice(0, 10)
+                    }
+                    setForm({ ...form, proxima_accion: fecha, fecha_proximo_contacto: proxima })
+                  }}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Fecha próximo contacto
+                  {form.proxima_accion && (
+                    <span className="ml-2 text-brand-gold font-normal">
+                      (automático: +{(form.num_contactos || 0) >= 1 ? 30 : 15} días)
+                    </span>
+                  )}
+                </label>
+                <input type="date" value={form.fecha_proximo_contacto || ''}
+                  onChange={e => setForm({ ...form, fecha_proximo_contacto: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300" />
+              </div>
 
               {[
                 { label: 'Fuente', key: 'fuente', options: ['Facebook', 'WhatsApp', 'Instagram', 'Recomendación', 'Otro'] },
