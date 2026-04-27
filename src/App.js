@@ -2229,7 +2229,7 @@ export default function App() {
                 </div>
               ))}
 
-              {/* DÍA DE CONTACTO + FECHA PRÓXIMO CONTACTO AUTOMÁTICO */}
+              {/* DÍA DE CONTACTO */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Día de contacto</label>
                 <DatePicker
@@ -2238,14 +2238,7 @@ export default function App() {
                   selected={form.proxima_accion ? new Date(form.proxima_accion + 'T12:00:00') : null}
                   onChange={date => {
                     const fecha = date ? date.toISOString().slice(0, 10) : ''
-                    const dias = (form.num_contactos || 0) >= 1 ? 30 : 15
-                    let proxima = ''
-                    if (fecha) {
-                      const d = new Date(fecha + 'T12:00:00')
-                      d.setDate(d.getDate() + dias)
-                      proxima = d.toISOString().slice(0, 10)
-                    }
-                    setForm({ ...form, proxima_accion: fecha, fecha_proximo_contacto: proxima })
+                    setForm({ ...form, proxima_accion: fecha, fecha_proximo_contacto: '' })
                   }}
                   placeholderText="Selecciona una fecha"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
@@ -2255,14 +2248,21 @@ export default function App() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Fecha próximo contacto
-                  {form.proxima_accion && (
-                    <span className="ml-2 text-brand-gold font-normal">
-                      (automático: +{(form.num_contactos || 0) >= 1 ? 30 : 15} días)
-                    </span>
-                  )}
-                </label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Próximo contacto en</label>
+                <div className="flex gap-2 mb-2">
+                  {[7, 15, 30].map(dias => (
+                    <button key={dias} type="button"
+                      onClick={() => {
+                        const base = form.proxima_accion || new Date().toISOString().slice(0, 10)
+                        const d = new Date(base + 'T12:00:00')
+                        d.setDate(d.getDate() + dias)
+                        setForm({ ...form, fecha_proximo_contacto: d.toISOString().slice(0, 10) })
+                      }}
+                      className="flex-1 border border-gray-200 rounded-lg py-1.5 text-sm font-medium text-gray-600 hover:bg-yellow-50 hover:border-yellow-300 hover:text-yellow-700 transition-colors">
+                      +{dias} días
+                    </button>
+                  ))}
+                </div>
                 <input type="date" value={form.fecha_proximo_contacto || ''}
                   onChange={e => setForm({ ...form, fecha_proximo_contacto: e.target.value })}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300" />
