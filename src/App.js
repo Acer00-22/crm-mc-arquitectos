@@ -1274,7 +1274,7 @@ export default function App() {
                             onChange={toggleTodos}
                             className="w-4 h-4 accent-red-500" />
                         </th>
-                        {['Nombre', 'Oportunidad', 'Teléfono', 'Fuente', 'Tipo', 'Probabilidad', 'Estatus', 'Asesor', 'Acciones'].map(h => (
+                        {['Nombre', 'Oportunidad', 'Teléfono', 'Tipo de interés', 'Probabilidad', 'Estatus', 'Asesor', 'Acciones'].map(h => (
                           <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
                         ))}
                       </tr>
@@ -1289,7 +1289,6 @@ export default function App() {
                           <td className="px-4 py-3"><button onClick={() => abrirDetalle(c)} className="font-medium text-gray-800 hover:text-brand-gold text-left">{c.nombre}</button></td>
                           <td className="px-4 py-3 text-gray-500">{c.oportunidad}</td>
                           <td className="px-4 py-3 text-gray-500">{c.telefono}</td>
-                          <td className="px-4 py-3 text-gray-500">{c.fuente}</td>
                           <td className="px-4 py-3 text-gray-500">{c.tipo_interes}</td>
                           <td className="px-4 py-3">
                             {c.probabilidad_cierre && (
