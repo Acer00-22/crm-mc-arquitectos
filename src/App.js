@@ -2085,7 +2085,7 @@ export default function App() {
                     <table className="w-full text-xs">
                       <thead className="bg-gray-50">
                         <tr>
-                          {['Nombre', 'Teléfono', 'Estatus', 'Probabilidad', 'Asesor', 'Fuente'].map(h => (
+                          {['Nombre', 'Teléfono', 'Tipo de interés', 'Probabilidad', 'Asesor', 'Perfil'].map(h => (
                             <th key={h} className="px-3 py-2 text-left font-semibold text-gray-600">{h}</th>
                           ))}
                         </tr>
@@ -2095,7 +2095,7 @@ export default function App() {
                           <tr key={i} className="border-t border-gray-100">
                             <td className="px-3 py-2 font-medium text-gray-800">{c.nombre || '—'}</td>
                             <td className="px-3 py-2 text-gray-600">{c.telefono || '—'}</td>
-                            <td className="px-3 py-2 text-gray-600">{c.estatus || '—'}</td>
+                            <td className="px-3 py-2 text-gray-600">{c.tipo_interes || '—'}</td>
                             <td className="px-3 py-2">
                               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                                 c.probabilidad_cierre === 'alta' ? 'bg-green-100 text-green-700' :
@@ -2105,7 +2105,11 @@ export default function App() {
                               {c._prob_sugerida && <span className="ml-1 text-gray-400" title="Sugerencia automática">💡</span>}
                             </td>
                             <td className="px-3 py-2 text-gray-600">{c.asesor || '—'}</td>
-                            <td className="px-3 py-2 text-gray-600">{c.fuente || '—'}</td>
+                            <td className="px-3 py-2">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${completitudCliente(c).color}`}>
+                                {completitudCliente(c).label}
+                              </span>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
