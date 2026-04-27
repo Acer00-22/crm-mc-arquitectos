@@ -715,6 +715,9 @@ export default function App() {
 
   const completitudCliente = (c) => {
     if (!c.tipo_interes) return { color: 'bg-red-100 text-red-600', label: 'Sin tipo de interés' }
+    const otros = ['telefono', 'oportunidad', 'probabilidad_cierre', 'asesor', 'proxima_accion']
+    const faltantes = otros.filter(k => !c[k]).length
+    if (faltantes > 0) return { color: 'bg-yellow-100 text-yellow-700', label: `Faltan ${faltantes} campo${faltantes > 1 ? 's' : ''}` }
     return { color: 'bg-green-100 text-green-700', label: 'Completo' }
   }
 
