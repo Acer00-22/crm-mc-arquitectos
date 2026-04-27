@@ -583,9 +583,26 @@ export default function App() {
           })
           .filter(c => c.nombre)
 
+        // Filtrar duplicados por teléfono
+        const tel10 = t => (t || '').replace(/\D/g, '').slice(-10)
+        const telefonosExistentes = new Set(clientes.map(c => tel10(c.telefono)).filter(Boolean))
+        const telefonosNuevosVistos = new Set()
+        const sinDuplicados = clientes_raw.filter(c => {
+          const t = tel10(c.telefono)
+          if (!t) return true
+          if (telefonosExistentes.has(t) || telefonosNuevosVistos.has(t)) return false
+          telefonosNuevosVistos.add(t)
+          return true
+        })
+        const duplicados = clientes_raw.length - sinDuplicados.length
+
         setImportPreview([])
         setImportResultado({ ok: false, msg: '✨ Corrigiendo ortografía con IA...' })
-        const clientes_import = await corregirOrtografiaGroq(clientes_raw)
+        const clientes_import = await corregirOrtografiaGroq(sinDuplicados)
+        if (duplicados > 0) {
+          setImportResultado({ ok: false, msg: `⚠️ Se omitieron ${duplicados} contacto(s) duplicado(s). Revisa la vista previa.`, _warn: true })
+          setTimeout(() => setImportResultado(null), 4000)
+        }
         setImportPreview(clientes_import)
         setImportResultado(null)
       } catch {
@@ -2058,18 +2075,23 @@ export default function App() {
               <button onClick={() => { setImportModal(false); cargarClientes(); cargarCitas() }}><X size={20} className="text-gray-400" /></button>
             </div>
             <div className="p-5 space-y-4">
-              {importResultado ? (
+              {importResultado && !importResultado._warn && (
                 <div className={`rounded-xl p-4 text-sm font-medium ${importResultado.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                   {importResultado.msg}
                   {importResultado.ok && (
                     <button onClick={() => { setImportModal(false); cargarClientes(); cargarCitas() }} className="ml-4 underline">Cerrar</button>
                   )}
                 </div>
-              ) : importPreview.length === 0 ? (
+              )}
+              {importResultado?._warn && (
+                <div className="rounded-xl px-4 py-2 text-sm font-medium bg-yellow-50 text-yellow-700">
+                  {importResultado.msg}
+                </div>
+              )}
+              {importPreview.length === 0 && !importResultado?.ok && (
                 <>
                   <p className="text-sm text-gray-500">Sube un archivo <strong>.xlsx</strong> o <strong>.csv</strong>. El sistema detecta automáticamente las columnas: nombre, teléfono, correo, asesor, estatus, fuente, probabilidad, INFONAVIT, terreno, notas, etc.</p>
-                  <div
-                    onClick={() => importInputRef.current?.click()}
+                  <div onClick={() => importInputRef.current?.click()}
                     className="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center cursor-pointer hover:border-brand-gold hover:bg-yellow-50 transition-colors">
                     <Upload size={32} className="mx-auto mb-2 text-gray-400" />
                     <p className="text-sm font-medium text-gray-600">Haz clic para seleccionar archivo</p>
@@ -2078,10 +2100,11 @@ export default function App() {
                   <input ref={importInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden"
                     onChange={e => { if (e.target.files[0]) procesarExcel(e.target.files[0]); e.target.value = '' }} />
                 </>
-              ) : (
+              )}
+              {importPreview.length > 0 && (
                 <>
                   <div className="bg-blue-50 rounded-xl px-4 py-3 text-sm text-blue-700">
-                    Se detectaron <strong>{importPreview.length} clientes</strong>. Revisa la vista previa antes de importar.
+                    Se detectaron <strong>{importPreview.length} clientes</strong> para importar. Revisa la vista previa.
                   </div>
                   <div className="overflow-x-auto rounded-xl border border-gray-200">
                     <table className="w-full text-xs">
@@ -2103,9 +2126,7 @@ export default function App() {
                                 c.probabilidad_cierre === 'alta' ? 'bg-green-100 text-green-700' :
                                 c.probabilidad_cierre === 'media' ? 'bg-yellow-100 text-yellow-700' :
                                 'bg-red-100 text-red-700'
-                              }`}>
-                                {c.probabilidad_cierre || '—'}
-                              </span>
+                              }`}>{c.probabilidad_cierre || '—'}</span>
                               {c._prob_sugerida && <span className="ml-1 text-gray-400" title="Sugerencia automática">💡</span>}
                             </td>
                             <td className="px-3 py-2 text-gray-600">{c.asesor || '—'}</td>
