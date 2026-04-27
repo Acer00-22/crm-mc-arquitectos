@@ -486,7 +486,13 @@ export default function App() {
   async function confirmarImportacion() {
     if (importPreview.length === 0) return
     setImportCargando(true)
-    const { error } = await supabase.from('clientes').insert(importPreview)
+    const camposFecha = ['fecha_proximo_contacto', 'proxima_accion']
+    const datos = importPreview.map(c => {
+      const limpio = { ...c }
+      camposFecha.forEach(f => { if (limpio[f] === '') limpio[f] = null })
+      return limpio
+    })
+    const { error } = await supabase.from('clientes').insert(datos)
     if (error) {
       setImportResultado({ ok: false, msg: 'Error al importar: ' + error.message })
     } else {
