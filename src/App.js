@@ -2266,7 +2266,6 @@ export default function App() {
               </div>
 
               {[
-                { label: 'Fuente', key: 'fuente', options: ['Facebook', 'WhatsApp', 'Instagram', 'Recomendación', 'Otro'] },
                 { label: 'Tipo de interés', key: 'tipo_interes', options: ['Construcción nueva', 'Remodelación', 'Venta de casa', 'Solo informándose', 'Cliente potencial calificado'] },
                 { label: 'Probabilidad de cierre', key: 'probabilidad_cierre', options: ['alta', 'media', 'baja'] },
                 { label: 'Estatus', key: 'estatus', options: ['nuevo', 'en seguimiento', 'cerrado', 'perdido'] },
