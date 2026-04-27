@@ -1945,14 +1945,14 @@ export default function App() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center p-5 border-b">
               <h2 className="text-lg font-bold text-gray-800">Importar clientes desde Excel</h2>
-              <button onClick={() => setImportModal(false)}><X size={20} className="text-gray-400" /></button>
+              <button onClick={() => { setImportModal(false); cargarClientes(); cargarCitas() }}><X size={20} className="text-gray-400" /></button>
             </div>
             <div className="p-5 space-y-4">
               {importResultado ? (
                 <div className={`rounded-xl p-4 text-sm font-medium ${importResultado.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                   {importResultado.msg}
                   {importResultado.ok && (
-                    <button onClick={() => setImportModal(false)} className="ml-4 underline">Cerrar</button>
+                    <button onClick={() => { setImportModal(false); cargarClientes(); cargarCitas() }} className="ml-4 underline">Cerrar</button>
                   )}
                 </div>
               ) : importPreview.length === 0 ? (
