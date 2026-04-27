@@ -2215,8 +2215,39 @@ export default function App() {
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300" />
               </div>
 
+              {/* TIPO DE INTERÉS — auto-calcula probabilidad y oportunidad */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Tipo de interés</label>
+                <select value={form.tipo_interes || ''} onChange={e => {
+                  const tipo = e.target.value
+                  const tieneInfo = form.tiene_infonavit
+                  const tieneTerre = form.tiene_terreno
+                  const esPotencial = ['Construcción nueva', 'Cliente potencial calificado'].includes(tipo)
+                  let prob = form.probabilidad_cierre
+                  let opor = form.oportunidad
+                  if (tipo) {
+                    if (tieneInfo && tieneTerre && esPotencial) prob = 'alta'
+                    else if ((tieneInfo || tieneTerre) && esPotencial) prob = 'media'
+                    else if (esPotencial) prob = 'media'
+                    else prob = 'baja'
+                    const mapaOpor = {
+                      'Construcción nueva': 'Casa nueva en terreno propio',
+                      'Cliente potencial calificado': 'Cliente con alta intención de compra',
+                      'Remodelación': 'Remodelación de espacio existente',
+                      'Venta de casa': 'Interesado en venta de propiedad',
+                      'Solo informándose': 'Exploración inicial sin compromiso',
+                    }
+                    if (!form.oportunidad) opor = mapaOpor[tipo] || ''
+                  }
+                  setForm({ ...form, tipo_interes: tipo, probabilidad_cierre: prob, oportunidad: opor })
+                }}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                  <option value="">Seleccionar...</option>
+                  {['Construcción nueva', 'Remodelación', 'Venta de casa', 'Solo informándose', 'Cliente potencial calificado'].map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+
               {[
-                { label: 'Tipo de interés', key: 'tipo_interes', options: ['Construcción nueva', 'Remodelación', 'Venta de casa', 'Solo informándose', 'Cliente potencial calificado'] },
                 { label: 'Probabilidad de cierre', key: 'probabilidad_cierre', options: ['alta', 'media', 'baja'] },
                 { label: 'Estatus', key: 'estatus', options: ['nuevo', 'en seguimiento', 'cerrado', 'perdido'] },
               ].map(({ label, key, options }) => (
